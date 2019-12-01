@@ -3,6 +3,10 @@
   width: 90vw;
   height: 90vh;
 }
+canvas {
+    padding: 0;
+    margin: 0;
+}
 body {
     padding: 0;
     margin: 0;
