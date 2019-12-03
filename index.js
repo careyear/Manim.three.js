@@ -25,7 +25,6 @@ let camera;
 let renderer;
 let scene;
 let mesh;
-let controls;
 
 function init() {
 
@@ -68,7 +67,7 @@ function createCamera() {
 }
 function createControls() {
 
-  controls = new OrbitControls( camera, container );
+  new OrbitControls( camera, container );
 
 }
 
@@ -169,27 +168,24 @@ function createText(content){
 
   let loader = new FontLoader();
   let geometry;
-  loader.load( 'fonts/helvetiker_regular.typeface.js', (font) => {
-    geometry = TextGeometry(content, {
+  loader.load( 'fonts/helvetiker_regular.typeface.json', (font) => {
+    geometry = new TextGeometry(content, {
       font: font,
-      size: 40,
-      height: 5,
+      size: 1,
+      height: 0.1,
       curveSegments: 10,
-      bevelEnabled: true,
-      bevelThickness: 6,
-      bevelSize: 4,
-      bevelOffset: 2,
-      bevelSegments: 5
+      bevelEnabled: false
     } );
-  } );
+      const material = new MeshStandardMaterial( {
+        color: 0x112233,
+        side: DoubleSide  // creates a double sided object
+      } );
 
-  const material = new MeshStandardMaterial( {
-    color: 0x112233,
-    side: DoubleSide  // creates a double sided object
+      let text = new Mesh(geometry, material);
+      text.position.set(0, 0, 3);
+      new OrbitControls(text, container);
+      scene.add(text);
   } );
-
-  let text = Mesh(geometry, material);
-  scene.add(text);
 }
 
 
