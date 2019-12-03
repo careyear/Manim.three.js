@@ -9,6 +9,7 @@
   "author": "CareYear",
   "license": "ISC",
   "dependencies": {
-    "three": "^0.111.0"
+    "three": "^0.111.0",
+    "three-bmfont-text": "^2.3.0"
   }
 }

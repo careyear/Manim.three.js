@@ -9,7 +9,14 @@ import {
     sRGBEncoding,
     MeshStandardMaterial,
     Mesh,
-    WebGLRenderer
+    WebGLRenderer,
+    Vector3,
+    ArrowHelper,
+    CircleGeometry,
+    SphereGeometry,
+    DoubleSide,
+    FontLoader,
+    TextGeometry
 } from './node_modules/three/src/Three.js';
 import {OrbitControls} from './node_modules/three/examples/jsm/controls/OrbitControls.js';
 // these need to be accessed inside more than one function so we'll declare them first
@@ -25,12 +32,16 @@ function init() {
   container = document.querySelector( '#scene-container' );
 
   scene = new Scene();
-  scene.background = new Color( 0x8FBCD4 );
+  scene.background = new Color( 0x000000 );
 
   createCamera();
   createControls();
   createLights();
-  createMeshes();
+  createMeshes(createCube(), 'textures/uv_test_bw.png', 0, 1, 0, 0);
+  createMeshes(createSphere(), 'textures/boxes.jpg', 2, 1, 2, 1);
+  createMeshes(createCircle(), 'textures/wood.jpg', 0, 0, 0, Math.PI / 2);
+  createArrow( -2, 0, 0 );
+  createText("Helllooo!!!");
   createRenderer();
 
   renderer.setAnimationLoop( () => {
@@ -77,23 +88,25 @@ function createLights() {
 
 }
 
-function createMeshes() {
-
-  const geometry = new BoxBufferGeometry( 2, 2, 2 );
+function createMeshes(geometry, texturePath, i, j, k, angleX) {
 
   const textureLoader = new TextureLoader();
 
-  const texture = textureLoader.load( 'textures/uv_test_bw.png' );
+  const texture = textureLoader.load( texturePath );
 
   texture.encoding = sRGBEncoding;
   texture.anisotropy = 16;
 
   const material = new MeshStandardMaterial( {
     map: texture,
+    side: DoubleSide  // creates a double sided object
   } );
 
   mesh = new Mesh( geometry, material );
-
+  mesh.position.x = i;
+  mesh.position.y = j;
+  mesh.position.z = k;
+  mesh.rotation.x = angleX;
   scene.add( mesh );
 
 }
@@ -112,6 +125,73 @@ function createRenderer() {
   container.appendChild( renderer.domElement );
 
 }
+
+// shapes
+
+function createCube(){
+
+  let geometry = new BoxBufferGeometry( 2, 2, 2 );
+
+  return geometry;
+
+}
+
+function createCircle(){
+
+  let geometry = new CircleGeometry( 5, 45 );
+
+  return geometry;
+}
+
+function createSphere(){
+  let geometry = new SphereGeometry( 1, 50, 50 );
+
+  return geometry;
+}
+
+function createArrow(i, j, k){
+
+  let dir = new Vector3( 0, 1, 0 );
+  // makes it a unit vector
+  dir.normalize();
+
+  let origin = new Vector3( i, j, k );
+  let length = 3;
+  let hex = 0xffff11; /////////////////////// why does 0xff1 yield blue???
+
+  let geometry = new ArrowHelper( dir, origin, length, hex );
+
+  scene.add(geometry);
+
+}
+
+function createText(content){
+
+  let loader = new FontLoader();
+  let geometry;
+  loader.load( 'fonts/helvetiker_regular.typeface.js', (font) => {
+    geometry = TextGeometry(content, {
+      font: font,
+      size: 40,
+      height: 5,
+      curveSegments: 10,
+      bevelEnabled: true,
+      bevelThickness: 6,
+      bevelSize: 4,
+      bevelOffset: 2,
+      bevelSegments: 5
+    } );
+  } );
+
+  const material = new MeshStandardMaterial( {
+    color: 0x112233,
+    side: DoubleSide  // creates a double sided object
+  } );
+
+  let text = Mesh(geometry, material);
+  scene.add(text);
+}
+
 
 function update() {
     // increase the mesh's rotation each frame
