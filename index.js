@@ -42,8 +42,8 @@ function init() {
   createArrow( -2, 0, 0 );
   createText("Helllooo!!!");
   createRenderer();
-  createStaticText("Lorem Ipsum Dolor Sit Amet", 20, 40);
 
+  
   renderer.setAnimationLoop( () => {
 
     update();
@@ -189,25 +189,7 @@ function createText(content){
   } );
 }
 
-function createStaticText(content, x, y){
 
-  //to get the coordinates of the top left corner of canvas
-  let rect = container.getBoundingClientRect();
-  let canvasX = rect.left, canvasY = rect.top;
-
-  let textX = x + canvasX;
-  let textY = y + canvasY;
-
-  let node = document.createElement("span");
-  let textnode = document.createTextNode(content);
-  node.appendChild(textnode);
-  container.appendChild(node);
-  node.style.top = textX + "px";
-  node.style.left = textY + "px";
-  node.style.color = "#fff";
-  node.setAttribute("id", "fixedText");
-
-}
 
 
 function update() {
