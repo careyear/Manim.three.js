@@ -1,13 +1,23 @@
 #scene-container {
-  position: absolute;
+ /* position: absolute;*/
   width: 90vw;
   height: 90vh;
 }
+
 canvas {
     padding: 0;
     margin: 0;
 }
+
 body {
     padding: 0;
     margin: 0;
+}
+
+#fixedText{
+	position: absolute;
+	z-index: 100;
+	display: block;
+	color: red;
+	font-family: 'Arial', sans-serif;
 }
