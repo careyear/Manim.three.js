@@ -5,18 +5,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link href="style.css" rel="stylesheet" type="text/css">
     <title>Test</title>
+
+    <!-- MathJax Config -->
+    <script type="text/x-mathjax-config">
+        MathJax.Hub.Config({
+            SVG: {
+                scale: 420,
+                useGlobalCache: true,
+                useFontCache: false
+        }
+    })
+    </script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-AMS_SVG"></script>
+    </script>
+
 </head>
 <body>
     <div id="scene-container">
+        <canvas id="c"></canvas>
     </div>
     <span>Resolution:<br>
-    	Height: <input type="input" id="resolution-height">
-    	Width: <input type="input" id="resolution-width"><br>
-        Left: <input type="input" id="text-left">
-        Top: <input type="input" id="text-top"><br>
-        Text: <input type="input" id="text-content">
-        Font size: <input type="input" id="text-size">
-        <button type="button" onclick="addTextButton()">Add Text</button>
+    	Normal Text: <input type="input" id="input-text">
+        <button type="button" onclick="addNormalText()">Add Text</button>
+        
+        Animated Text: <input type="input" id="input-animated-text">
+        <button type="button" onclick="addAnimatedText()">Add Text</button>
+
+        <br>
+
+        Normal MathJax: <input type="input" id="input-mathjax">
+        <button type="button" onclick="addNormalMathJax()">Add MathJax</button>
+
+        Animated MathJax: <input type="input" id="input-animated-mathjax">
+        <button type="button" onclick="addAnimatedMathJax()">Add MathJax</button>
+
     </span>
     <script type="module" src="index.js"></script>
     <script type="text/javascript" src="text.js"></script>

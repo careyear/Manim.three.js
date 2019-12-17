@@ -1,10 +1,12 @@
+@import url('https://fonts.googleapis.com/css?family=Open+Sans&display=swap');
+
 #scene-container {
- /* position: absolute;*/
   width: 90vw;
   height: 90vh;
 }
 
 canvas {
+    position: absolute;
     padding: 0;
     margin: 0;
 }
@@ -14,10 +16,22 @@ body {
     margin: 0;
 }
 
-#fixedText{
+#c{
+  height: 90vh;
+  width: 90vw;
+  z-index: 99;
+}
+
+#fixedText, #fixedTextMathJax{
 	position: absolute;
 	z-index: 100;
 	display: block;
 	color: red;
 	font-family: 'Arial', sans-serif;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: 0;
+  }
 }
