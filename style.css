@@ -22,7 +22,7 @@ body {
   z-index: 99;
 }
 
-#fixedText, #fixedTextMathJax{
+#fixedText, #fixedTextMathJax, #animatedTextMathJax{
 	position: absolute;
 	z-index: 100;
 	display: block;
