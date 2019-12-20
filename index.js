@@ -43,6 +43,7 @@ function init() {
   createText("Helllooo!!!");
   createRenderer();
 
+  
   renderer.setAnimationLoop( () => {
 
     update();
@@ -178,15 +179,17 @@ function createText(content){
     } );
       const material = new MeshStandardMaterial( {
         color: 0x112233,
-        side: DoubleSide  // creates a double sided object
+       // side: DoubleSide  // creates a double sided object
       } );
 
       let text = new Mesh(geometry, material);
       text.position.set(0, 0, 3);
-      new OrbitControls(text, container);
+      //new OrbitControls(text, container);
       scene.add(text);
   } );
 }
+
+
 
 
 function update() {
