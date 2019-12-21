@@ -31,7 +31,34 @@ body {
 }
 
 @keyframes dash {
-  to {
-    stroke-dashoffset: 0;
-  }
+    to {
+        stroke-dashoffset: 0;
+    }
 }
+
+@keyframes fill {
+    from {
+        fill: transparent;
+    }
+    to {
+        fill: red;
+    }
+}
+
+@keyframes dash-and-fill {
+    0% {
+        fill: transparent;
+    }
+    75% {
+        fill: transparent;
+        stroke-dashoffset: 0;
+    }
+    100% {
+        fill: red;
+        stroke-dashoffset: 0;
+    }
+}
+
+/*#animatedTextMathJax {*/
+    /**/
+/*}*/
