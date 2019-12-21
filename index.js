@@ -16,7 +16,10 @@ import {
     SphereGeometry,
     DoubleSide,
     FontLoader,
-    TextGeometry
+    TextGeometry,
+    LineBasicMaterial,
+    Geometry,
+    Line
 } from './node_modules/three/src/Three.js';
 import {OrbitControls} from './node_modules/three/examples/jsm/controls/OrbitControls.js';
 // these need to be accessed inside more than one function so we'll declare them first
@@ -25,6 +28,10 @@ let camera;
 let renderer;
 let scene;
 let mesh;
+
+// for coordinates
+// let canvasX = ?widthOfCanvas?, canvasY = ?heightOfCanvas?;
+
 
 function init() {
 
@@ -36,11 +43,14 @@ function init() {
   createCamera();
   createControls();
   createLights();
-  createMeshes(createCube(), 'textures/uv_test_bw.png', 0, 1, 0, 0);
-  createMeshes(createSphere(), 'textures/boxes.jpg', 2, 1, 2, 1);
-  createMeshes(createCircle(), 'textures/wood.jpg', 0, 0, 0, Math.PI / 2);
-  createArrow( -2, 0, 0 );
-  createText("Helllooo!!!");
+  createMeshes(createCircle(2, 100, 0, 2 * Math.PI), 'textures/wood.jpg', 0, 0, 0, 0, 0, 0);
+  createArrow( 0, 0, 0, 1, 0, 0, 0xff0000, false ); // x-axis
+  createArrow( 0, 0, 0, 0, 1, 0, 0x00ff00, false ); // y-axis
+  createArrow( 0, 0, 0, 0, 0, 1, 0x0000ff, false ); // z-axis
+
+  let blah = [[0, 0, 0], [1, 2.5, 0], [2, 0, 0], [0, 1.75, 0], [2, 1.75, 0], [0, 0, 0]];
+  createPolygon(0xffffff, blah);
+
   createRenderer();
 
   
@@ -66,6 +76,7 @@ function createCamera() {
   camera.position.set( -4, 4, 10 );
 
 }
+
 function createControls() {
 
   new OrbitControls( camera, container );
@@ -88,7 +99,16 @@ function createLights() {
 
 }
 
-function createMeshes(geometry, texturePath, i, j, k, angleX) {
+
+
+//	geometry -> returned by create<shapeName>() function
+//	texturePath -> path to the texture file
+//	i = x-coordinate for positioning
+//	j = y-coordinate for positioning
+//	k = z-coordinate for positioning
+//	angleX = amount of rotation about X-axis
+
+function createMeshes(geometry, texturePath, i, j, k, angleX, angleY, angleZ) {
 
   const textureLoader = new TextureLoader();
 
@@ -107,6 +127,8 @@ function createMeshes(geometry, texturePath, i, j, k, angleX) {
   mesh.position.y = j;
   mesh.position.z = k;
   mesh.rotation.x = angleX;
+  mesh.rotation.y = angleY;
+  mesh.rotation.z = angleZ;
   scene.add( mesh );
 
 }
@@ -124,46 +146,86 @@ function createRenderer() {
 
   container.appendChild( renderer.domElement );
 
+
 }
 
 // shapes
 
-function createCube(){
+function createCube( side ){
 
-  let geometry = new BoxBufferGeometry( 2, 2, 2 );
+  // side = scale(side, canvasX);
+  let geometry = new BoxBufferGeometry( side, side, side );
 
   return geometry;
 
 }
 
-function createCircle(){
+function createCircle( radius, numberOfSegments, startAngle, endAngle ){
 
-  let geometry = new CircleGeometry( 5, 45 );
-
-  return geometry;
-}
-
-function createSphere(){
-  let geometry = new SphereGeometry( 1, 50, 50 );
+  // radius = scale(radius, canvasX);
+  let geometry = new CircleGeometry( radius, numberOfSegments, startAngle, endAngle );
 
   return geometry;
 }
 
-function createArrow(i, j, k){
+function createSphere( radius, widthSegments, heightSegments ){
 
-  let dir = new Vector3( 0, 1, 0 );
+  // radius = scale(radius, canvasX);
+  let geometry = new SphereGeometry( radius, widthSegments, heightSegments );
+
+  return geometry;
+}
+
+
+// put is2D as true or false if you want 2D or 3D arrow respectively
+function createArrow( i1, j1, k1, i2, j2, k2, color, is2D ){
+	
+  if(is2D)
+	 k1 = 0, k2 = 0;
+
+  // to scale the coordinates
+  // i1 = scale(i1, canvasX);
+  // i2 = scale(i2, canvasX);
+  // j1 = scale(j1, canvasY);
+  // j2 = scale(j2, canvasY);
+  // k1 = scale(k1, canvasZ);
+  // k2 = scale(k2, canvasZ);
+
+  let dir = new Vector3( i2 - i1, j2 - j1, k2 - k1 );
   // makes it a unit vector
   dir.normalize();
 
-  let origin = new Vector3( i, j, k );
-  let length = 3;
-  let hex = 0xffff11; /////////////////////// why does 0xff1 yield blue???
+  let origin = new Vector3( i1, j1, k1 );
+  let length = Math.sqrt( Math.pow((i2 - i1), 2) + Math.pow((j2 - j1), 2) + Math.pow((k2 - k1), 2) );
+  let hex = color; /////////////////////// why does 0xff1 yield blue???
 
   let geometry = new ArrowHelper( dir, origin, length, hex );
 
   scene.add(geometry);
 
 }
+
+// for example, arr = [[0, 0, 0], [1, 1, 1], [5, 2, 8]]
+function createPolygon(hex, arr){
+  
+  let material = new LineBasicMaterial({
+    color: hex
+  });
+
+  let geometry = new Geometry();
+
+  let l = arr.length;
+
+// add all the points to the geometry, can also scale them if required
+  for(let i = 0; i < l; i++)
+    geometry.vertices.push(new Vector3(arr[i][0], arr[i][1], arr[i][2]));
+
+  let line = new Line(geometry, material);
+  scene.add(line);
+
+}
+
+
 
 function createText(content){
 
@@ -187,6 +249,12 @@ function createText(content){
       //new OrbitControls(text, container);
       scene.add(text);
   } );
+}
+
+
+// need to find what `original` is
+function scale(coordinate, original){
+    return coordinate / 1000 * original; // 1000 = artificial width and height of the canvas
 }
 
 
