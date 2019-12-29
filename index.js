@@ -9,6 +9,7 @@ import {
     DoubleSide,
     FontLoader,
     Geometry,
+    GridHelper,
     HemisphereLight,
     Line,
     LineBasicMaterial,
@@ -133,12 +134,12 @@ export class Animation {
     };
     createLineShapes = (shape, color, animate, x, y, z, rx, ry, rz) => {
         shape.autoClose = true;
-        if(animate) {
+        if (animate) {
             let geometry = new BufferGeometry().fromGeometry(new ShapeGeometry(shape));
             let points = [];
             let points_temp = geometry.attributes.position.array;
-            for(let i = 0;i < points_temp.length; i += 3) {
-                points.push(new Vector3(points_temp[i], points_temp[i+1], points_temp[i+2]));
+            for (let i = 0; i < points_temp.length; i += 3) {
+                points.push(new Vector3(points_temp[i], points_temp[i + 1], points_temp[i + 2]));
             }
             let numPoints = points.length;
             let lineDistances = new Float32Array(numPoints); // 1 value per point
@@ -149,7 +150,6 @@ export class Animation {
                 if (animate && i > 0)
                     lineDistances[i] = lineDistances[i - 1] + points[i - 1].distanceTo(points[i]);
 
-            console.log(lineDistances[999]);
             let line = new Line(geometry, new LineDashedMaterial({color: color, dashSize: 1, gapSize: 1e10}));
             line.position.set(x, y, z);
             line.rotation.set(rx, ry, rz);
@@ -157,8 +157,8 @@ export class Animation {
             return line;
         } else {
             let points = shape.getPoints();
-            let geometry = new BufferGeometry().setFromPoints( points );
-            let line = new Line(geometry, new LineBasicMaterial({ color: color }));
+            let geometry = new BufferGeometry().setFromPoints(points);
+            let line = new Line(geometry, new LineBasicMaterial({color: color}));
             this.scene.add(line);
             return line;
         }
@@ -190,12 +190,14 @@ export class Animation {
             let contentSpan = MathJax.HTML.addElement(
                 this.container,
                 "span",
-                {id: "animatedTextMathJax", style:
+                {
+                    id: "animatedTextMathJax", style:
                         {
                             top: "100px",
                             left: "100px",
                             visibility: "hidden",
-                        }},
+                        }
+                },
                 [content]
             );
             contentSpan.style.color = color;
@@ -211,7 +213,7 @@ export class Animation {
                 let numSpans = mathJaxSpans.length;
 
                 // set the fill color as transparent
-                for(let i = 0; i < numSpans; i++){
+                for (let i = 0; i < numSpans; i++) {
                     let mainSVG = mathJaxSpans[i].querySelector(":scope > svg").querySelector(":scope > g");
                     mainSVG.setAttribute("fill", "transparent");
 
@@ -219,7 +221,7 @@ export class Animation {
 
                 // selects all the path like objects like <path>, <rect> etc.
                 let allThePaths = document.querySelectorAll("g :not(g)");
-                for (let i = 0; i < allThePaths.length; i++){
+                for (let i = 0; i < allThePaths.length; i++) {
                     allThePaths[i].setAttribute("class", "path");   // CHANGE THIS!!!!!!!!! as it will remove the already present classes
                     allThePaths[i].setAttribute("stroke-width", "30");
                     allThePaths[i].setAttribute("stroke", "solid");
@@ -227,29 +229,91 @@ export class Animation {
 
                 // adds the required animation
                 let pathElem = document.getElementsByClassName("path");
-                for(let i = 0;i<pathElem.length;i++)
-                {
+                for (let i = 0; i < pathElem.length; i++) {
                     let length = pathElem[i].getTotalLength();
                     pathElem[i].style["stroke-dasharray"] = length;
                     pathElem[i].style["stroke-dashoffset"] = length;
                 }
                 let cnt = 0;
+
                 function loop() {
                     setTimeout(() => {
                         pathElem[cnt].setAttribute("fill", color);
                         let animationTime = 1;
-                        if(!animate)
+                        if (!animate)
                             animationTime = 0.01;
                         pathElem[cnt].style.animation = "dash-and-fill " + animationTime + "s linear forwards";
                         cnt++;
                         if (cnt !== pathElem.length)
                             loop();
-                            }, animate ? 150 : 0);
+                    }, animate ? 150 : 0);
                 }
+
                 loop();
             });
         });
     };
+    createPlotGrid = (size = 10, animate = true) => {
+        // if(animate) {
+        //
+        // }
+        let geometry_y = new BufferGeometry();
+        geometry_y.setAttribute('position', new BufferAttribute(new Float32Array([
+            0, size, 0,
+            0, -size, 0
+        ]), 3));
+        let y_axis = new Line(geometry_y, new LineBasicMaterial({color: 0xffffff}));
+        this.scene.add(y_axis);
+        let geometry_x = new BufferGeometry();
+        geometry_x.setAttribute('position', new BufferAttribute(new Float32Array([
+            size, 0, 0,
+            -size, 0, 0
+        ]), 3));
+        let x_axis = new Line(geometry_x, new LineBasicMaterial({color: 0xffffff}));
+        this.scene.add(x_axis);
+    };
+    createGraph2D = (func, segCnt, zoom, animate = true) => {
+        if (animate) {
+            let geometry = new BufferGeometry();
+            let eps = 10 / segCnt;
+            let points_t = [];
+            for (let x = -5; x <= 5; x += eps)
+                points_t.push(new Vector3(x, func(x * zoom), 0));
+            // points_t.push(new Vector3(-5, func(-5), 0));
+            let points = new Float32Array(points_t.length * 3);
+            let numPoints = points_t.length;
+            let lineDistances = new Float32Array(numPoints);
+            geometry.setAttribute('position', new BufferAttribute(points, 3));
+            geometry.setAttribute('lineDistance', new BufferAttribute(lineDistances, 1));
+            // populate
+            for (let i = 0, index = 0, l = numPoints; i < l; i++, index += 3) {
+                points[index] = points_t[i].x;
+                points[index + 1] = points_t[i].y;
+                points[index + 2] = points_t[i].z;
+                if (i > 0)
+                    lineDistances[i] = lineDistances[i - 1] + points_t[i - 1].distanceTo(points_t[i]);
+            }
+            // console.log(lineDistances[numPoints - 1]);
+            let line = new Line(geometry, new LineDashedMaterial(
+                {
+                    color: 0x4444ff,
+                    dashSize: 1,
+                    gapSize: 1e10,
+                    linewidth: 5
+                }));
+            this.scene.add(line);
+            return line;
+        } else {
+            let geometry = new Geometry();
+            let eps = 10 / segCnt;
+            for (let x = -5; x <= 5; x += eps)
+                geometry.vertices.push(new Vector3(x, func(x * zoom), 0));
+            let line = new Line(geometry, new LineBasicMaterial({color: 0x4444ff}));
+            this.scene.add(line);
+            return line;
+        }
+    };
+
 // shapes
 
     createCube = (side, texturePath = './textures/wood.jpg', i = 0, j = 0, k = 0, angleX = 0, angleY = 0, angleZ = 0) => {

@@ -5,6 +5,8 @@ let anim = new Animation(true);
 let line = anim.createLineCircle(1, 1000, true);
 let mesh = anim.fill(line.geometry, 0xff00ff, 0);
 anim.addText("\\begin{matrix}1 & x & x^2 \\\\1 & y & y^2 \\\\1 & z & z^2 \\end{matrix}", '#ffffff');
+let graph = anim.createGraph2D((x) => x*x - 3, 100, 1, true);
+let grid = anim.createPlotGrid();
 let animation = [
     {
         name: "draw square",
@@ -45,7 +47,19 @@ let animation = [
         },
         reset: () => {},
         terminateCond: () => (mesh.opacity <= 0)
-    }
+    },
+    {
+        name: "draw graph",
+        fraction: 0,
+        animate: () => {
+            animation[4].fraction = (animation[4].fraction + 0.01);
+            graph.material.dashSize = animation[4].fraction * 37;
+        },
+        reset: () => {
+            animation[4].fraction = 0;
+        },
+        terminateCond: () => (animation[0].fraction >= 1)
+    },
 ];
 anim.addAnimation(animation[0]);
 anim.addAnimation(animation[2]);
@@ -65,4 +79,5 @@ anim.addAnimation({name: "checkpoint"});
 anim.addAnimation(animation[1]);
 anim.addAnimation(animation[3]);
 anim.addAnimation({name: "checkpoint"});
+anim.addAnimation(animation[4]);
 anim.play();
