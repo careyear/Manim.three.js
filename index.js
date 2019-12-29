@@ -76,9 +76,6 @@ export class Animation {
 
     };
 
-    scaleX = (x) => x * this.container.clientWidth / 1000;
-    scaleY = (y) => y * this.container.clientWidth / 1000;
-
     createCamera = () => {
 
         this.camera = new PerspectiveCamera(
@@ -183,7 +180,7 @@ export class Animation {
 
         this.container.appendChild(this.renderer.domElement);
     };
-    addText = (text, color, textSize, animate = true) => {
+    addText = (text, color, animate = true, textSize) => {
 
         let content = "$$" + text + "$$";
 
@@ -199,7 +196,7 @@ export class Animation {
                             top: "100px",
                             left: "100px",
                             visibility: "hidden",
-                            fontSize: textSize + "%",
+                            fontSize: textSize + "px",
                         }
                 },
                 [content]
