@@ -16,24 +16,23 @@ body {
     margin: 0;
 }
 
-#fixedText, #fixedTextMathJax, #animatedTextMathJax{
+#animatedTextMathJax{
 	position: absolute;
 	z-index: 100;
 	display: block;
-	color: red;
 	font-family: 'Arial', sans-serif;
 }
 
 @keyframes dash-and-fill {
     0% {
-        fill: transparent;
+        fill-opacity: 0;
     }
     90% {
-        fill: transparent;
+        fill-opacity: 0;
         stroke-dashoffset: 0;
     }
     100% {
-        fill: red;
+        fill-opacity: 1;
         stroke-dashoffset: 0;
     }
 }

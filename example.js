@@ -4,6 +4,7 @@ let anim = new Animation(true);
 // anim.createArrow(0, 0, 0, 1, 1, 1, 'red', true);
 let line = anim.createLineCircle(1, 1000, true);
 let mesh = anim.fill(line.geometry, 0xff00ff, 0);
+anim.addText("\\begin{matrix}1 & x & x^2 \\\\1 & y & y^2 \\\\1 & z & z^2 \\end{matrix}", '#ffffff');
 let animation = [
     {
         name: "draw square",

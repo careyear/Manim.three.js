@@ -107,14 +107,6 @@ export class Animation {
         this.scene.add(ambientLight, mainLight);
     };
 
-
-//	geometry -> returned by create<shapeName>() let
-//	texturePath -> path to the texture file
-//	i = x-coordinate for positioning
-//	j = y-coordinate for positioning
-//	k = z-coordinate for positioning
-//	angleX = amount of rotation about X-axis
-
     createMeshes = (geometry, texturePath, i, j, k, angleX, angleY, angleZ) => {
 
         const textureLoader = new TextureLoader();
@@ -188,7 +180,78 @@ export class Animation {
 
         this.container.appendChild(this.renderer.domElement);
     };
+    addText = (text, color, animate = true) => {
 
+        let content = "$$" + text + "$$";
+
+        MathJax.Hub.Register.StartupHook("End", () => {
+
+            // creates and adds a span element containing the SVG
+            let contentSpan = MathJax.HTML.addElement(
+                container,
+                "span",
+                {id: "animatedTextMathJax", style:
+                        {
+                            top: "100px",
+                            left: "100px",
+                            visibility: "hidden",
+                        }},
+                [content]
+            );
+            contentSpan.style.color = color;
+
+            MathJax.Hub.Queue(["Typeset", MathJax.Hub, contentSpan], () => {
+                contentSpan.style.visibility = "visible";
+            });
+
+            MathJax.Hub.Queue(() => {
+
+                // gets the parent SVG element
+                let mathJaxSpans = document.querySelectorAll("#animatedTextMathJax > .MathJax_SVG_Display > .MathJax_SVG");
+                let numSpans = mathJaxSpans.length;
+
+                console.log(mathJaxSpans);
+
+                // set the fill color as transparent
+                for(let i = 0; i < numSpans; i++){
+                    let mainSVG = mathJaxSpans[i].querySelector(":scope > svg").querySelector(":scope > g");
+                    mainSVG.setAttribute("fill", "transparent");
+
+                }
+
+                // selects all the path like objects like <path>, <rect> etc.
+                let allThePaths = document.querySelectorAll("g :not(g)");
+                for (let i = 0; i < allThePaths.length; i++){
+                    allThePaths[i].setAttribute("class", "path");   // CHANGE THIS!!!!!!!!! as it will remove the already present classes
+                    allThePaths[i].setAttribute("stroke-width", "30");
+                    allThePaths[i].setAttribute("stroke", "solid");
+                }
+
+                // adds the required animation
+                let pathElem = document.getElementsByClassName("path");
+                for(let i = 0;i<pathElem.length;i++)
+                {
+                    let length = pathElem[i].getTotalLength();
+                    pathElem[i].style["stroke-dasharray"] = length;
+                    pathElem[i].style["stroke-dashoffset"] = length;
+                }
+                let cnt = 0;
+                function loop() {
+                    setTimeout(() => {
+                        pathElem[cnt].setAttribute("fill", color);
+                        let animationTime = 1;
+                        if(!animate)
+                            animationTime = 0.01;
+                        pathElem[cnt].style.animation = "dash-and-fill " + animationTime + "s linear forwards";
+                        cnt++;
+                        if (cnt !== pathElem.length)
+                            loop();
+                            }, animate ? 150 : 0);
+                }
+                loop();
+            });
+        });
+    };
 // shapes
 
     createCube = (side, texturePath = './textures/wood.jpg', i = 0, j = 0, k = 0, angleX = 0, angleY = 0, angleZ = 0) => {

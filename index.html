@@ -13,7 +13,8 @@
             SVG: {
                 scale: 420,
                 useGlobalCache: true,
-                useFontCache: false
+                useFontCache: false,
+                font: "Latin-Modern"
             },
             TeX: {
                 extensions: ["[mhchem]/mhchem.js"]
@@ -28,24 +29,7 @@
 <body>
     <div id="scene-container">
     </div>
-    <span>Resolution:<br>
-    	Normal Text: <input type="input" id="input-text">
-        <button type="button" onclick="addNormalText()">Add Text</button>
-        
-        Animated Text: <input type="input" id="input-animated-text">
-        <button type="button" onclick="addAnimatedText()">Add Text</button>
-
-        <br>
-
-        Normal MathJax: <input type="input" id="input-mathjax">
-        <button type="button" onclick="addNormalMathJax()">Add MathJax</button>
-
-        Animated MathJax: <input type="input" id="input-animated-mathjax">
-        <button type="button" onclick="addAnimatedMathJax()">Add MathJax</button>
-
-    </span>
     <script type="module" src="example.js"></script>
-    <script type="text/javascript" src="text.js"></script>
 
 </body>
 </html>
