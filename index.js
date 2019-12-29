@@ -150,7 +150,7 @@ export class Animation {
                 if (animate && i > 0)
                     lineDistances[i] = lineDistances[i - 1] + points[i - 1].distanceTo(points[i]);
 
-            let line = new Line(geometry, new LineDashedMaterial({color: color, dashSize: 1, gapSize: 1e10}));
+            let line = new Line(geometry, new LineDashedMaterial({color: color, dashSize: 0, gapSize: 1e10}));
             line.position.set(x, y, z);
             line.rotation.set(rx, ry, rz);
             this.scene.add(line);
@@ -180,7 +180,7 @@ export class Animation {
 
         this.container.appendChild(this.renderer.domElement);
     };
-    addText = (text, color, animate = true, textSize) => {
+    addText = (text, color, textSize, x = 0, y = 0, animate = true) => {
 
         let content = "$$" + text + "$$";
 
@@ -193,10 +193,10 @@ export class Animation {
                 {
                     id: "animatedTextMathJax", style:
                         {
-                            top: "100px",
-                            left: "100px",
+                            top: (this.container.clientHeight / 2 + y) + "px",
+                            left: (this.container.clientWidth / 2 + x) + "px",
                             visibility: "hidden",
-                            fontSize: textSize + "px",
+                            fontSize: textSize + "%",
                         }
                 },
                 [content]
@@ -276,10 +276,46 @@ export class Animation {
     createGraph2D = (func, segCnt, zoom, animate = true) => {
         if (animate) {
             let geometry = new BufferGeometry();
-            let eps = 10 / segCnt;
+            let eps = 14 / segCnt;
             let points_t = [];
-            for (let x = -5; x <= 5; x += eps)
+            for (let x = -7; x <= 7; x += eps)
                 points_t.push(new Vector3(x, func(x * zoom), 0));
+            // points_t.push(new Vector3(-5, func(-5), 0));
+            let points = new Float32Array(points_t.length * 3);
+            let numPoints = points_t.length;
+            let lineDistances = new Float32Array(numPoints);
+            geometry.setAttribute('position', new BufferAttribute(points, 3));
+            geometry.setAttribute('lineDistance', new BufferAttribute(lineDistances, 1));
+            // populate
+            for (let i = 0, index = 0, l = numPoints; i < l; i++, index += 3) {
+                points[index] = points_t[i].x;
+                points[index + 1] = points_t[i].y;
+                points[index + 2] = points_t[i].z;
+                if (i > 0)
+                    lineDistances[i] = lineDistances[i - 1] + points_t[i - 1].distanceTo(points_t[i]);
+            }
+            // console.log(lineDistances[numPoints - 1]);
+            return new Line(geometry, new LineDashedMaterial(
+                {
+                    color: 0x4444ff,
+                    dashSize: 0,
+                    gapSize: 1e10,
+                    linewidth: 5,
+                }));
+        } else {
+            let geometry = new Geometry();
+            let eps = 10 / segCnt;
+            for (let x = -5; x <= 5; x += eps)
+                geometry.vertices.push(new Vector3(x, func(x * zoom), 0));
+            return new Line(geometry, new LineBasicMaterial({color: 0x4444ff}));
+        }
+    };
+    graphTransform = (fromfunc, tofunc, segCnt, zoom, fraction) => {
+        let geometry = new BufferGeometry();
+            let eps = 14 / segCnt;
+            let points_t = [];
+            for (let x = -7; x <= 7; x += eps)
+                points_t.push(new Vector3(x, fraction * tofunc(x * zoom) + (1 - fraction) * fromfunc(x * zoom), 0));
             // points_t.push(new Vector3(-5, func(-5), 0));
             let points = new Float32Array(points_t.length * 3);
             let numPoints = points_t.length;
@@ -298,21 +334,12 @@ export class Animation {
             let line = new Line(geometry, new LineDashedMaterial(
                 {
                     color: 0x4444ff,
-                    dashSize: 1,
+                    dashSize: 1000,
                     gapSize: 1e10,
-                    linewidth: 5
+                    linewidth: 5,
                 }));
             this.scene.add(line);
             return line;
-        } else {
-            let geometry = new Geometry();
-            let eps = 10 / segCnt;
-            for (let x = -5; x <= 5; x += eps)
-                geometry.vertices.push(new Vector3(x, func(x * zoom), 0));
-            let line = new Line(geometry, new LineBasicMaterial({color: 0x4444ff}));
-            this.scene.add(line);
-            return line;
-        }
     };
 
 // shapes
@@ -441,6 +468,18 @@ export class Animation {
             if (currentAnimation.name === "checkpoint") {
                 if (!played)
                     this.start = i + 1;
+                break;
+            }
+            else if (currentAnimation.name === "delay") {
+                // noinspection StatementWithEmptyBodyJS
+                let a = 1312, b = 73, c = 82782;
+                for(let temp = 0;temp < 100000000; temp++){
+                    // bogus calculation for a small delay
+                    a = (a * b) % c;
+                    a++;
+                }
+                this.hasPlayed[i] = true;
+                this.start = i + 1;
                 break;
             }
             if (!this.hasPlayed[i]) {
