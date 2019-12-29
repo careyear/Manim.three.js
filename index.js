@@ -79,7 +79,7 @@ export class Animation {
 
         this.camera = new PerspectiveCamera(
             35, // FOV
-            container.clientWidth / container.clientHeight, // aspect
+            this.container.clientWidth / this.container.clientHeight, // aspect
 
             0.1, // near clipping plane
             100, // far clipping plane
@@ -188,7 +188,7 @@ export class Animation {
 
             // creates and adds a span element containing the SVG
             let contentSpan = MathJax.HTML.addElement(
-                container,
+                this.container,
                 "span",
                 {id: "animatedTextMathJax", style:
                         {
@@ -209,8 +209,6 @@ export class Animation {
                 // gets the parent SVG element
                 let mathJaxSpans = document.querySelectorAll("#animatedTextMathJax > .MathJax_SVG_Display > .MathJax_SVG");
                 let numSpans = mathJaxSpans.length;
-
-                console.log(mathJaxSpans);
 
                 // set the fill color as transparent
                 for(let i = 0; i < numSpans; i++){
