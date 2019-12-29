@@ -24,26 +24,11 @@ body {
 	font-family: 'Arial', sans-serif;
 }
 
-@keyframes dash {
-    to {
-        stroke-dashoffset: 0;
-    }
-}
-
-@keyframes fill {
-    from {
-        fill: transparent;
-    }
-    to {
-        fill: red;
-    }
-}
-
 @keyframes dash-and-fill {
     0% {
         fill: transparent;
     }
-    75% {
+    90% {
         fill: transparent;
         stroke-dashoffset: 0;
     }
@@ -52,7 +37,3 @@ body {
         stroke-dashoffset: 0;
     }
 }
-
-/*#animatedTextMathJax {*/
-    /**/
-/*}*/
