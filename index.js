@@ -141,29 +141,35 @@ export class Animation {
     };
     createLineShapes = (shape, color, animate, x, y, z, rx, ry, rz) => {
         shape.autoClose = true;
-        // let geometry = new BufferGeometry().setFromPoints(points);
-        let geometry = new BufferGeometry().fromGeometry(new ShapeGeometry(shape));
-        let points = [];
-        let points_temp = geometry.attributes.position.array;
-        for(let i = 0;i < points_temp.length; i += 3) {
-            points.push(new Vector3(points_temp[i], points_temp[i+1], points_temp[i+2]));
-        }
-        let numPoints = points.length;
-        let lineDistances = new Float32Array(numPoints); // 1 value per point
+        if(animate) {
+            let geometry = new BufferGeometry().fromGeometry(new ShapeGeometry(shape));
+            let points = [];
+            let points_temp = geometry.attributes.position.array;
+            for(let i = 0;i < points_temp.length; i += 3) {
+                points.push(new Vector3(points_temp[i], points_temp[i+1], points_temp[i+2]));
+            }
+            let numPoints = points.length;
+            let lineDistances = new Float32Array(numPoints); // 1 value per point
 
-        geometry.setAttribute('lineDistance', new BufferAttribute(lineDistances, 1));
-        //
-        // // populate
-        for (let i = 0, index = 0, l = numPoints; i < l; i++, index += 3) {
-            if (animate && i > 0)
-                lineDistances[i] = lineDistances[i - 1] + points[i - 1].distanceTo(points[i]);
-        }
+            geometry.setAttribute('lineDistance', new BufferAttribute(lineDistances, 1));
+            // populate
+            for (let i = 0, index = 0, l = numPoints; i < l; i++, index += 3)
+                if (animate && i > 0)
+                    lineDistances[i] = lineDistances[i - 1] + points[i - 1].distanceTo(points[i]);
 
-        let line = new Line(geometry, new LineDashedMaterial({color: color, dashSize: 1, gapSize: 1e10}));
-        line.position.set(x, y, z);
-        line.rotation.set(rx, ry, rz);
-        this.scene.add(line);
-        return line;
+            console.log(lineDistances[999]);
+            let line = new Line(geometry, new LineDashedMaterial({color: color, dashSize: 1, gapSize: 1e10}));
+            line.position.set(x, y, z);
+            line.rotation.set(rx, ry, rz);
+            this.scene.add(line);
+            return line;
+        } else {
+            let points = shape.getPoints();
+            let geometry = new BufferGeometry().setFromPoints( points );
+            let line = new Line(geometry, new LineBasicMaterial({ color: color }));
+            this.scene.add(line);
+            return line;
+        }
     };
     fill = (line, color, opacity) => {
         let material = new MeshBasicMaterial({color: color, side: DoubleSide, transparent: true, opacity: opacity});
@@ -199,15 +205,22 @@ export class Animation {
         return this.createLineShapes(squareShape, 0xffffff, animate, 0, 0, 0, 0, 0, 0);
     };
 
-    createCircle = (radius, numberOfSegments, startAngle, endAngle, texturePath = './textures/wood.jpg', i = 0, j = 0, k = 0, angleX = 0, angleY = 0, angleZ = 0) => {
-
-        return this.createMeshes(new CircleGeometry(radius, numberOfSegments, startAngle, endAngle), texturePath, i, j, k, angleX, angleY, angleZ);
-    };
-
     createSphere = (radius, widthSegments, heightSegments, texturePath = './textures/wood.jpg', i = 0, j = 0, k = 0, angleX = 0, angleY = 0, angleZ = 0) => {
 
         // radius = scale(radius, canvasX);
-        this.createMeshes(new SphereGeometry(radius, widthSegments, heightSegments), texturePath, i, j, k, angleX, angleY, angleZ);
+        return this.createMeshes(new SphereGeometry(radius, widthSegments, heightSegments), texturePath, i, j, k, angleX, angleY, angleZ);
+    };
+
+    createLineCircle = (radius, numberOfSegments = 1000, animate = false) => {
+        let shape = new Shape().moveTo(radius, 0);
+        for (let i = 1; i <= numberOfSegments; i++) {
+            let theta = (i / numberOfSegments) * Math.PI * 2;
+            shape = shape.lineTo(
+                Math.cos(theta) * radius,
+                Math.sin(theta) * radius
+            );
+        }
+        return this.createLineShapes(shape, 0xffffff, animate, 0, 0, 0, 0, 0, 0);
     };
 
 // put is2D as true or false if you want 2D or 3D arrow respectively

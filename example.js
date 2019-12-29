@@ -2,15 +2,15 @@ import {Animation} from './index.js';
 
 let anim = new Animation(true);
 // anim.createArrow(0, 0, 0, 1, 1, 1, 'red', true);
-let line = anim.createLineSquare(1, true);
+let line = anim.createLineCircle(1, 1000, true);
 let mesh = anim.fill(line.geometry, 0xff00ff, 0);
 let animation = [
     {
         name: "draw square",
         fraction: 0,
         animate: () => {
-            animation[0].fraction = (animation[0].fraction + 0.03);
-            line.material.dashSize = animation[0].fraction * 5;
+            animation[0].fraction = (animation[0].fraction + 0.01);
+            line.material.dashSize = animation[0].fraction * 10;
         },
         reset: () => {
             animation[0].fraction = 0;
@@ -21,8 +21,8 @@ let animation = [
         name: "remove square",
         fraction: 1,
         animate: () => {
-            animation[1].fraction = (animation[1].fraction - 0.01);
-            line.material.dashSize = animation[1].fraction * 5;
+            animation[1].fraction = (animation[1].fraction - 0.03);
+            line.material.dashSize = animation[1].fraction * 10;
         },
         reset: () => {
             animation[1].fraction = 1;
@@ -35,7 +35,7 @@ let animation = [
             mesh.opacity += 0.005;
         },
         reset: () => {},
-        terminateCond: () => (mesh.opacity >= 0.6)
+        terminateCond: () => (mesh.opacity >= 0.4)
     },
     {
         name: "unfill square",
