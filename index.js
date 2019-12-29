@@ -180,7 +180,7 @@ export class Animation {
 
         this.container.appendChild(this.renderer.domElement);
     };
-    addText = (text, color, animate = true, textSize) => {
+    addText = (text, color, textSize, animate = true) => {
 
         let content = "$$" + text + "$$";
 
