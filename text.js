@@ -30,11 +30,6 @@ let addNormalMathJax = () => {
     });
 };
 
-
-
-/* ------------- TO CREATE ANIMATED MATHJAX ------------- */
-// Not yet working!!
-
 let addAnimatedMathJax = () => {
 
     let content = "$$" + document.getElementById("input-animated-mathjax").value + "$$";

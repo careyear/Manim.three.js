@@ -1,6 +1,8 @@
 import {
     ArrowHelper,
     BoxBufferGeometry,
+    BufferAttribute,
+    BufferGeometry,
     CircleGeometry,
     Color,
     DirectionalLight,
@@ -10,10 +12,14 @@ import {
     HemisphereLight,
     Line,
     LineBasicMaterial,
+    LineDashedMaterial,
     Mesh,
+    MeshBasicMaterial,
     MeshStandardMaterial,
     PerspectiveCamera,
     Scene,
+    Shape,
+    ShapeGeometry,
     SphereGeometry,
     sRGBEncoding,
     TextGeometry,
@@ -22,16 +28,20 @@ import {
     WebGLRenderer
 } from './node_modules/three/src/Three.js';
 import {OrbitControls} from './node_modules/three/examples/jsm/controls/OrbitControls.js';
-// import {BoxBufferGeometry} from "./node_modules/three/src/Three";
-// these need to be accessed inside more than one let so we'll declare them first
 
 export class Animation {
-
-// for coordinates
 // let canvasX = ?widthOfCanvas?, canvasY = ?heightOfCanvas?;
 
     constructor(controls = true) {
+        this.isPlaying = false;
+        this.hasPlayed = [];
+        this.animations = []; // Animations are a dictionary = {name, function, terminate_condition, ...variables}
+        this.start = 0; // the index from which to start playing animations, for optimized animations
 
+        /* This way of animating is not provably optimal but works well with small number
+        * of animations. We will think of better ways after this crude implementation works
+        * as planned.
+        */
         this.container = document.querySelector('#scene-container');
 
         this.scene = new Scene();
@@ -41,15 +51,6 @@ export class Animation {
         if (controls)
             this.createControls();
         this.createLights();
-        // createMeshes(createCircle(2, 100, 0, 2 * Math.PI), 'textures/wood.jpg', 0, 0, 0, 0, 0, 0);
-        // createArrow( 0, 0, 0, 1, 0, 0, 0xff0000, false ); // x-axis
-        // createArrow( 0, 0, 0, 0, 1, 0, 0x00ff00, false ); // y-axis
-        // createArrow( 0, 0, 0, 0, 0, 1, 0x0000ff, false ); // z-axis
-        //   createArrow(1, 1, 1, 2, 2, 2, 0xffffff, false);
-
-
-        // let blah = [[0, 0, 0], [1, 2.5, 0], [2, 0, 0], [0, 1.75, 0], [2, 1.75, 0], [0, 0, 0]];
-        // createPolygon(0xffffff, blah);
 
         this.createRenderer();
         window.addEventListener('resize', () => {
@@ -128,18 +129,48 @@ export class Animation {
             side: DoubleSide  // creates a double sided object
         });
 
-        this.mesh = new Mesh(geometry, material);
-        this.mesh.position.x = i;
-        this.mesh.position.y = j;
-        this.mesh.position.z = k;
-        this.mesh.rotation.x = angleX;
-        this.mesh.rotation.y = angleY;
-        this.mesh.rotation.z = angleZ;
-        this.scene.add(this.mesh);
+        let mesh = new Mesh(geometry, material);
+        mesh.position.x = i;
+        mesh.position.y = j;
+        mesh.position.z = k;
+        mesh.rotation.x = angleX;
+        mesh.rotation.y = angleY;
+        mesh.rotation.z = angleZ;
+        this.scene.add(mesh);
+        return mesh;
+    };
+    createLineShapes = (shape, color, animate, x, y, z, rx, ry, rz) => {
+        shape.autoClose = true;
+        // let geometry = new BufferGeometry().setFromPoints(points);
+        let geometry = new BufferGeometry().fromGeometry(new ShapeGeometry(shape));
+        let points = [];
+        let points_temp = geometry.attributes.position.array;
+        for(let i = 0;i < points_temp.length; i += 3) {
+            points.push(new Vector3(points_temp[i], points_temp[i+1], points_temp[i+2]));
+        }
+        let numPoints = points.length;
+        let lineDistances = new Float32Array(numPoints); // 1 value per point
 
+        geometry.setAttribute('lineDistance', new BufferAttribute(lineDistances, 1));
+        //
+        // // populate
+        for (let i = 0, index = 0, l = numPoints; i < l; i++, index += 3) {
+            if (animate && i > 0)
+                lineDistances[i] = lineDistances[i - 1] + points[i - 1].distanceTo(points[i]);
+        }
+
+        let line = new Line(geometry, new LineDashedMaterial({color: color, dashSize: 1, gapSize: 1e10}));
+        line.position.set(x, y, z);
+        line.rotation.set(rx, ry, rz);
+        this.scene.add(line);
+        return line;
+    };
+    fill = (line, color, opacity) => {
+        let material = new MeshBasicMaterial({color: color, side: DoubleSide, transparent: true, opacity: opacity});
+        this.scene.add(new Mesh(line, material));
+        return material;
     };
     createRenderer = () => {
-
         this.renderer = new WebGLRenderer({antialias: true});
         this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
 
@@ -150,8 +181,6 @@ export class Animation {
         this.renderer.physicallyCorrectLights = true;
 
         this.container.appendChild(this.renderer.domElement);
-
-
     };
 
 // shapes
@@ -159,14 +188,20 @@ export class Animation {
     createCube = (side, texturePath = './textures/wood.jpg', i = 0, j = 0, k = 0, angleX = 0, angleY = 0, angleZ = 0) => {
         // side = scale(side, canvasX);
         this.createMeshes(new BoxBufferGeometry(side, side, side), texturePath, i, j, k, angleX, angleY, angleZ);
-
+    };
+    createLineSquare = (sqLength, animate = false) => {
+        let squareShape = new Shape()
+            .moveTo(0, 0)
+            .lineTo(0, sqLength)
+            .lineTo(sqLength, sqLength)
+            .lineTo(sqLength, 0)
+            .lineTo(0, 0);
+        return this.createLineShapes(squareShape, 0xffffff, animate, 0, 0, 0, 0, 0, 0);
     };
 
     createCircle = (radius, numberOfSegments, startAngle, endAngle, texturePath = './textures/wood.jpg', i = 0, j = 0, k = 0, angleX = 0, angleY = 0, angleZ = 0) => {
 
-        // radius = scale(radius, canvasX);
-
-        this.createMeshes(new CircleGeometry(radius, numberOfSegments, startAngle, endAngle), texturePath, i, j, k, angleX, angleY, angleZ);
+        return this.createMeshes(new CircleGeometry(radius, numberOfSegments, startAngle, endAngle), texturePath, i, j, k, angleX, angleY, angleZ);
     };
 
     createSphere = (radius, widthSegments, heightSegments, texturePath = './textures/wood.jpg', i = 0, j = 0, k = 0, angleX = 0, angleY = 0, angleZ = 0) => {
@@ -253,16 +288,40 @@ export class Animation {
         return coordinate / 1000 * original; // 1000 = artificial width and height of the canvas
     };
 
+    addAnimation = (animation) => {
+        if (this.isPlaying)
+            return;
+        this.animations.push(animation);
+        this.hasPlayed.push(false);
+    };
+
     update = () => {
-        // increase the mesh's rotation each frame
-        // mesh.rotation.z += 0.01;
-        // mesh.rotation.x += 0.01;
-        // mesh.rotation.y += 0.01;
+        let played = false;
+        for (let i = this.start; i < this.animations.length; i++) {
+            let currentAnimation = this.animations[i];
+            if (currentAnimation.name === "checkpoint") {
+                if (!played)
+                    this.start = i + 1;
+                break;
+            }
+            if (!this.hasPlayed[i]) {
+                if (currentAnimation.terminateCond()) {
+                    this.hasPlayed[i] = true;
+                    currentAnimation.reset();
+                } else {
+                    played = true;
+                    currentAnimation.animate();
+                }
+            }
+        }
     };
     render = () => {
         this.renderer.render(this.scene, this.camera);
     };
     play = () => {
+        if (this.isPlaying)
+            return;
+        this.isPlaying = true;
         this.renderer.setAnimationLoop(() => {
             this.update();
             this.render();
