@@ -29,8 +29,6 @@ import {
     WebGLRenderer
 } from './node_modules/three/src/Three.js';
 import {OrbitControls} from './node_modules/three/examples/jsm/controls/OrbitControls.js';
-// import CCapture from './node_modules/ccapture.js/build/CCapture.all.min.js';
-// import capturer from './capture.js';
 
 export class Animation {
 // let canvasX = ?widthOfCanvas?, canvasY = ?heightOfCanvas?;
@@ -94,6 +92,7 @@ export class Animation {
 
     createControls = () => {
         new OrbitControls(this.camera, this.container);
+        console.log("YEET");
     };
     createLights = () => {
 
@@ -134,8 +133,21 @@ export class Animation {
         this.scene.add(mesh);
         return mesh;
     };
+    createLine = (x1, y1, x2, y2) => {
+        let geometry = new BufferGeometry();
+        geometry.setAttribute('position', new BufferAttribute(new Float32Array([
+            x1, y1, 0,
+            x2, y2, 0
+        ]), 3));
+        geometry.setAttribute('lineDistance',
+            new BufferAttribute(new Float32Array([new Vector3(x1, y1, 0).distanceTo(new Vector3(x2, y2, 0))]),
+                1));
+        let line = new Line(geometry, new LineDashedMaterial({color: 0xffffff, dashSize: 0, gapSize: 1e10}));
+        this.scene.add(line);
+        return line;
+    };
     createLineShapes = (shape, color, animate, x, y, z, rx, ry, rz) => {
-        shape.autoClose = true;
+        // shape.autoClose = true;
         if (animate) {
             let geometry = new BufferGeometry().fromGeometry(new ShapeGeometry(shape));
             let points = [];
@@ -165,9 +177,11 @@ export class Animation {
             return line;
         }
     };
-    fill = (line, color, opacity) => {
+    fill = (line, color, opacity, x = 0, y = 0, z = 0) => {
         let material = new MeshBasicMaterial({color: color, side: DoubleSide, transparent: true, opacity: opacity});
-        this.scene.add(new Mesh(line, material));
+        let mesh = new Mesh(line, material);
+        mesh.position.set(x, y, z);
+        this.scene.add(mesh);
         return material;
     };
     createRenderer = () => {
@@ -403,7 +417,7 @@ export class Animation {
         return this.createMeshes(new SphereGeometry(radius, widthSegments, heightSegments), texturePath, i, j, k, angleX, angleY, angleZ);
     };
 
-    createLineCircle = (radius, numberOfSegments = 1000, animate = true) => {
+    createLineCircle = (radius, x, y, numberOfSegments = 1000, animate = true) => {
         let shape = new Shape().moveTo(radius, 0);
         for (let i = 1; i <= numberOfSegments; i++) {
             let theta = (i / numberOfSegments) * Math.PI * 2;
@@ -412,7 +426,7 @@ export class Animation {
                 Math.sin(theta) * radius
             );
         }
-        return this.createLineShapes(shape, 0xffffff, animate, 0, 0, 0, 0, 0, 0);
+        return this.createLineShapes(shape, 0xffffff, animate, x, y, 0.001, 0, 0, 0);
     };
 
 // put is2D as true or false if you want 2D or 3D arrow respectively
@@ -422,21 +436,12 @@ export class Animation {
             k2 = 0;
         }
 
-        // to scale the coordinates
-        // i1 = scale(i1, canvasX);
-        // i2 = scale(i2, canvasX);
-        // j1 = scale(j1, canvasY);
-        // j2 = scale(j2, canvasY);
-        // k1 = scale(k1, canvasZ);
-        // k2 = scale(k2, canvasZ);
-
         let dir = new Vector3(i2 - i1, j2 - j1, k2 - k1);
         // makes it a unit vector
         dir.normalize();
 
         let origin = new Vector3(i1, j1, k1);
         let length = Math.sqrt(Math.pow((i2 - i1), 2) + Math.pow((j2 - j1), 2) + Math.pow((k2 - k1), 2));
-        /////////////////////// why does 0xff1 yield blue???
 
         let geometry = new ArrowHelper(dir, origin, length, color);
 
@@ -463,28 +468,18 @@ export class Animation {
 
     };
 
-    createText = (content) => {
-
-        let loader = new FontLoader();
-        let geometry;
-        loader.load('fonts/helvetiker_regular.typeface.json', (font) => {
-            geometry = new TextGeometry(content, {
-                font: font,
-                size: 1,
-                height: 0.1,
-                curveSegments: 10,
-                bevelEnabled: false
-            });
-            const material = new MeshStandardMaterial({
-                color: 0x112233,
-                // side: DoubleSide  // creates a double sided object
-            });
-
-            let text = new Mesh(geometry, material);
-            text.position.set(0, 0, 3);
-            //new OrbitControls(text, container);
-            this.scene.add(text);
-        });
+    createGraph = (graph, radius = 0.25, animate = true) => {
+        let ret = [];
+        for(let i in graph.nodes) {
+            let node = graph.nodes[i];
+            // noinspection JSUnfilteredForInLoop
+            ret.push(this.createLineCircle(radius, node.x, node.y, 50, animate));
+        }
+        for(let i in graph.edges) {
+            let edge = graph.edges[i];
+            ret.push(this.createLine(graph.nodes[edge[0]].x, graph.nodes[edge[0]].y, graph.nodes[edge[1]].x, graph.nodes[edge[1]].y));
+        }
+        return ret;
     };
 
 

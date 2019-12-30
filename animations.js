@@ -37,13 +37,13 @@ export let undraw = (shape, size) => {
     };
     return ret;
 };
-export let fill = mesh => ({
+export let fill = (mesh, step = 0.005, to = 1) => ({
     name: "fill",
     animate: () => {
-        mesh.opacity += 0.005;
+        mesh.opacity += step;
     },
     reset: () => {},
-    terminateCond: () => (mesh.opacity >= 0.4)
+    terminateCond: () => (mesh.opacity >= to)
 });
 export let unfill = mesh => ({
     name: "unfill",
@@ -71,4 +71,14 @@ export let graphTransform = (anim, pastInit, fromFunc, toFunc, segCnt, zoom) => 
         terminateCond: () => (ret.fraction >= 1)
     };
     return ret;
+};
+export let animateGraph = (anim, graph, geometry) => {
+    for(let i in geometry) {
+    let obj = geometry[i];
+    anim.addAnimation(draw(obj, 3));
+    if(i < graph.nodes.length) {
+        anim.addAnimation(fill(anim.fill(obj.geometry, 0x000000, 0, graph.nodes[i].x, graph.nodes[i].y, 0.001), 1));
+
+    }
+}
 };
