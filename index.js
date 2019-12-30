@@ -29,6 +29,8 @@ import {
     WebGLRenderer
 } from './node_modules/three/src/Three.js';
 import {OrbitControls} from './node_modules/three/examples/jsm/controls/OrbitControls.js';
+// import CCapture from './node_modules/ccapture.js/build/CCapture.all.min.js';
+// import capturer from './capture.js';
 
 export class Animation {
 // let canvasX = ?widthOfCanvas?, canvasY = ?heightOfCanvas?;
@@ -310,6 +312,43 @@ export class Animation {
             return new Line(geometry, new LineBasicMaterial({color: 0x4444ff}));
         }
     };
+    createGraph2DParametric = (xfunc, yfunc, from, to, segCnt, zoom, animate = true) => {
+        if (animate) {
+            let geometry = new BufferGeometry();
+            let eps = (to - from) / segCnt;
+            let points_t = [];
+            for (let t = from; t <= to; t += eps)
+                points_t.push(new Vector3(xfunc(t * zoom), yfunc(t * zoom), 0));
+            // points_t.push(new Vector3(-5, func(-5), 0));
+            let points = new Float32Array(points_t.length * 3);
+            let numPoints = points_t.length;
+            let lineDistances = new Float32Array(numPoints);
+            geometry.setAttribute('position', new BufferAttribute(points, 3));
+            geometry.setAttribute('lineDistance', new BufferAttribute(lineDistances, 1));
+            // populate
+            for (let i = 0, index = 0, l = numPoints; i < l; i++, index += 3) {
+                points[index] = points_t[i].x;
+                points[index + 1] = points_t[i].y;
+                points[index + 2] = points_t[i].z;
+                if (i > 0)
+                    lineDistances[i] = lineDistances[i - 1] + points_t[i - 1].distanceTo(points_t[i]);
+            }
+            // console.log(lineDistances[numPoints - 1]);
+            return new Line(geometry, new LineDashedMaterial(
+                {
+                    color: 0x4444ff,
+                    dashSize: 0,
+                    gapSize: 1e10,
+                    linewidth: 5,
+                }));
+        } else {
+            let geometry = new Geometry();
+            let eps = 10 / segCnt;
+            for (let x = -5; x <= 5; x += eps)
+                geometry.vertices.push(new Vector3(x, func(x * zoom), 0));
+            return new Line(geometry, new LineBasicMaterial({color: 0x4444ff}));
+        }
+    };
     graphTransform = (fromfunc, tofunc, segCnt, zoom, fraction) => {
         let geometry = new BufferGeometry();
             let eps = 14 / segCnt;
@@ -468,7 +507,7 @@ export class Animation {
             if (currentAnimation.name === "checkpoint") {
                 if (!played)
                     this.start = i + 1;
-                break;
+                return;
             }
             else if (currentAnimation.name === "delay") {
                 // noinspection StatementWithEmptyBodyJS
@@ -480,7 +519,7 @@ export class Animation {
                 }
                 this.hasPlayed[i] = true;
                 this.start = i + 1;
-                break;
+                return;
             }
             if (!this.hasPlayed[i]) {
                 if (currentAnimation.terminateCond()) {
@@ -492,9 +531,13 @@ export class Animation {
                 }
             }
         }
+        if(!played)
+            this.stop();
     };
     render = () => {
         this.renderer.render(this.scene, this.camera);
+        if(this.capturer)
+            this.capturer.capture(this.renderer.domElement);
     };
     play = () => {
         if (this.isPlaying)
@@ -507,5 +550,15 @@ export class Animation {
     };
     stop = () => {
         this.renderer.setAnimationLoop(null);
+        if(this.capturer)
+        {
+            this.capturer.save();
+            this.capturer.stop();
+        }
+    };
+
+    record = () => {
+        this.capturer = new CCapture({format: 'webm', framerate: 60, verbose: true});
+        this.capturer.start();
     };
 }

@@ -6,7 +6,9 @@ let line = anim.createLineCircle(1, 1000, true);
 let mesh = anim.fill(line.geometry, 0xff00ff, 0);
 anim.addText("\\begin{matrix}1 & x & x^2 \\\\1 & y & y^2 \\\\1 & z & z^2 \\end{matrix}", '#ffffff', 50);
 let graph = anim.createGraph2D((x) => x * x - 2, 100, 1, true);
+let pgraph = anim.createGraph2DParametric((t) => 4 * Math.cos(t), (t) => 2 * Math.sin(t), 0, 2 * Math.PI, 100, 1, true);
 anim.scene.add(graph);
+anim.scene.add(pgraph);
 anim.createPlotGrid();
 let animation = [
     {
@@ -89,7 +91,31 @@ let animation = [
             animation[6].fraction = 0;
         },
         terminateCond: () => (animation[6].fraction >= 1)
-    }
+    },
+    {
+        name: "draw circle",
+        fraction: 0,
+        animate: () => {
+            animation[7].fraction = (animation[7].fraction + 0.01);
+            pgraph.material.dashSize = animation[7].fraction * 30;
+        },
+        reset: () => {
+            animation[7].fraction = 0;
+        },
+        terminateCond: () => (animation[7].fraction >= 1)
+    },
+    {
+        name: "remove graph",
+        fraction: 1,
+        animate: () => {
+            animation[8].fraction = (animation[8].fraction - 0.01);
+            animation[6].past.material.dashSize = animation[8].fraction * 10;
+        },
+        reset: () => {
+            animation[8].fraction = 1;
+        },
+        terminateCond: () => (animation[8].fraction <= 0)
+    },
 ];
 anim.addAnimation(animation[0]);
 anim.addAnimation(animation[2]);
@@ -116,4 +142,11 @@ anim.addAnimation({name: "checkpoint"});
 anim.addAnimation({name: "delay"});
 anim.addAnimation({name: "checkpoint"});
 anim.addAnimation(animation[6]);
+anim.addAnimation({name: "checkpoint"});
+anim.addAnimation({name: "delay"});
+anim.addAnimation({name: "checkpoint"});
+anim.addAnimation(animation[8]);
+anim.addAnimation({name: "checkpoint"});
+anim.addAnimation(animation[7]);
 anim.play();
+anim.record();
