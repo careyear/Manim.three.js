@@ -403,7 +403,7 @@ export class Animation {
         return this.createMeshes(new SphereGeometry(radius, widthSegments, heightSegments), texturePath, i, j, k, angleX, angleY, angleZ);
     };
 
-    createLineCircle = (radius, numberOfSegments = 1000, animate = false) => {
+    createLineCircle = (radius, numberOfSegments = 1000, animate = true) => {
         let shape = new Shape().moveTo(radius, 0);
         for (let i = 1; i <= numberOfSegments; i++) {
             let theta = (i / numberOfSegments) * Math.PI * 2;
@@ -558,7 +558,7 @@ export class Animation {
     };
 
     record = () => {
-        this.capturer = new CCapture({format: 'webm', framerate: 60, verbose: true});
+        this.capturer = new CCapture({format: 'webm', framerate: 60});
         this.capturer.start();
     };
 }
