@@ -270,24 +270,80 @@ export class Animation {
             });
         });
     };
-    createPlotGrid = (size = 10, animate = true) => {
-        // if(animate) {
-        //
-        // }
-        let geometry_y = new BufferGeometry();
-        geometry_y.setAttribute('position', new BufferAttribute(new Float32Array([
-            0, size, 0,
-            0, -size, 0
-        ]), 3));
-        let y_axis = new Line(geometry_y, new LineBasicMaterial({color: 0xffffff}));
-        this.scene.add(y_axis);
-        let geometry_x = new BufferGeometry();
-        geometry_x.setAttribute('position', new BufferAttribute(new Float32Array([
-            size, 0, 0,
-            -size, 0, 0
-        ]), 3));
-        let x_axis = new Line(geometry_x, new LineBasicMaterial({color: 0xffffff}));
-        this.scene.add(x_axis);
+    createPlotGrid = (topLeftX, topLeftY, bottomRightX, bottomRightY, animate = true) => {
+        if (animate) {
+            let axis = [];
+            let geometry_y = new BufferGeometry();
+            let points_y = [];
+            for (let y = bottomRightY; y <= topLeftY; y += 0.2)
+                points_y.push(new Vector3((topLeftX + bottomRightX) / 2, y, 0));
+            let y_points = new Float32Array(points_y.length * 3);
+            let y_numPoints = points_y.length;
+            let y_lineDistances = new Float32Array(y_numPoints);
+            geometry_y.setAttribute('position', new BufferAttribute(y_points, 3));
+            geometry_y.setAttribute('lineDistance', new BufferAttribute(y_lineDistances, 1));
+            // populate
+            for (let i = 0, index = 0, l = y_numPoints; i < l; i++, index += 3) {
+                y_points[index] = points_y[i].x;
+                y_points[index + 1] = points_y[i].y;
+                y_points[index + 2] = points_y[i].z;
+                if (i > 0)
+                    y_lineDistances[i] = y_lineDistances[i - 1] + points_y[i - 1].distanceTo(points_y[i]);
+            }
+
+            let geometry_x = new BufferGeometry();
+            let points_x = [];
+            for (let x = topLeftX; x <= bottomRightX; x += 0.2)
+                points_x.push(new Vector3(x, (topLeftY + bottomRightY) / 2, 0));
+            let x_points = new Float32Array(points_x.length * 3);
+            let x_numPoints = points_x.length;
+            let x_lineDistances = new Float32Array(x_numPoints);
+            geometry_x.setAttribute('position', new BufferAttribute(x_points, 3));
+            geometry_x.setAttribute('lineDistance', new BufferAttribute(x_lineDistances, 1));
+            // populate
+            for (let i = 0, index = 0, l = x_numPoints; i < l; i++, index += 3) {
+                x_points[index] = points_x[i].x;
+                x_points[index + 1] = points_x[i].y;
+                x_points[index + 2] = points_x[i].z;
+                if (i > 0)
+                    x_lineDistances[i] = x_lineDistances[i - 1] + points_x[i - 1].distanceTo(points_x[i]);
+            }
+            // console.log(lineDistances[numPoints - 1]);
+            axis.push(new Line(geometry_x, new LineDashedMaterial(
+                {
+                    color: 0xffffff,
+                    dashSize: 0,
+                    gapSize: 1e10,
+                    linewidth: 5,
+                })));
+
+            // console.log(lineDistances[numPoints - 1]);
+            axis.push(new Line(geometry_y, new LineDashedMaterial(
+                {
+                    color: 0xffffff,
+                    dashSize: 0,
+                    gapSize: 1e10,
+                    linewidth: 5,
+                })));
+            return axis;
+        } else {
+            let geometry_y = new BufferGeometry();
+            geometry_y.setAttribute('position', new BufferAttribute(new Float32Array([
+                ((bottomRightX + topLeftX) / 2), topLeftY, 0,
+                ((bottomRightX + topLeftX) / 2), ((topLeftY + bottomRightY) / 2), 0,
+                ((bottomRightX + topLeftX) / 2), bottomRightY, 0
+            ]), 3));
+            let y_axis = new Line(geometry_y, new LineBasicMaterial({color: 0xffffff}));
+            let geometry_x = new BufferGeometry();
+            geometry_x.setAttribute('position', new BufferAttribute(new Float32Array([
+                topLeftX, ((topLeftY + bottomRightY) / 2), 0,
+                ((bottomRightX + topLeftX) / 2), ((topLeftY + bottomRightY) / 2) , 0,
+                bottomRightX, ((topLeftY + bottomRightY) / 2), 0
+            ]), 3));
+            let x_axis = new Line(geometry_x, new LineBasicMaterial({color: 0xffffff}));
+            this.scene.add(x_axis);
+            this.scene.add(y_axis);
+        }
     };
     createGraph2D = (func, segCnt, zoom, animate = true) => {
         if (animate) {
@@ -357,9 +413,9 @@ export class Animation {
                 }));
         } else {
             let geometry = new Geometry();
-            let eps = 10 / segCnt;
-            for (let x = -5; x <= 5; x += eps)
-                geometry.vertices.push(new Vector3(x, func(x * zoom), 0));
+            let eps = (to - from) / segCnt;
+            for (let t = from; t <= to; t += eps)
+                geometry.vertices.push(new Vector3(xfunc(t * zoom), yfunc(t * zoom), 0));
             return new Line(geometry, new LineBasicMaterial({color: 0x4444ff}));
         }
     };
@@ -394,6 +450,97 @@ export class Animation {
             this.scene.add(line);
             return line;
     };
+    graphTransformParametric = (fromxfunc,fromyfunc, toxfunc, toyfunc, from, to, segCnt, zoom, fraction) => {
+        let geometry = new BufferGeometry();
+            let eps = (to - from) / segCnt;
+            let points_t = [];
+            for (let t = from; t <= to; t += eps)
+                points_t.push(new Vector3(fraction * toxfunc(t * zoom) + (1 - fraction) * fromxfunc(t * zoom), fraction * toyfunc(t * zoom) + (1 - fraction) * fromyfunc(t * zoom), 0));
+            let points = new Float32Array(points_t.length * 3);
+            let numPoints = points_t.length;
+            let lineDistances = new Float32Array(numPoints);
+            geometry.setAttribute('position', new BufferAttribute(points, 3));
+            geometry.setAttribute('lineDistance', new BufferAttribute(lineDistances, 1));
+            // populate
+            for (let i = 0, index = 0, l = numPoints; i < l; i++, index += 3) {
+                points[index] = points_t[i].x;
+                points[index + 1] = points_t[i].y;
+                points[index + 2] = points_t[i].z;
+                if (i > 0)
+                    lineDistances[i] = lineDistances[i - 1] + points_t[i - 1].distanceTo(points_t[i]);
+            }
+            // console.log(lineDistances[numPoints - 1]);
+            let line = new Line(geometry, new LineDashedMaterial(
+                {
+                    color: 0x4444ff,
+                    dashSize: 1000,
+                    gapSize: 1e10,
+                    linewidth: 5,
+                }));
+            this.scene.add(line);
+            return line;
+    };
+    graphTransformParametricCartesian = (fromxfunc, fromyfunc, tofunc, from, to, segCnt, zoom, fraction) => {
+        let geometry = new BufferGeometry();
+            let eps = 14 / segCnt;
+            let points_t = [];
+            for (let x = -7, t = from; x <= 7; x += eps, t += eps)
+                points_t.push(new Vector3(fraction * x + (1 - fraction) * fromxfunc(t * zoom), fraction * tofunc(x * zoom) + (1 - fraction) * fromyfunc(t * zoom), 0));
+            // points_t.push(new Vector3(-5, func(-5), 0));
+            let points = new Float32Array(points_t.length * 3);
+            let numPoints = points_t.length;
+            let lineDistances = new Float32Array(numPoints);
+            geometry.setAttribute('position', new BufferAttribute(points, 3));
+            geometry.setAttribute('lineDistance', new BufferAttribute(lineDistances, 1));
+            // populate
+            for (let i = 0, index = 0, l = numPoints; i < l; i++, index += 3) {
+                points[index] = points_t[i].x;
+                points[index + 1] = points_t[i].y;
+                points[index + 2] = points_t[i].z;
+                if (i > 0)
+                    lineDistances[i] = lineDistances[i - 1] + points_t[i - 1].distanceTo(points_t[i]);
+            }
+            // console.log(lineDistances[numPoints - 1]);
+            let line = new Line(geometry, new LineDashedMaterial(
+                {
+                    color: 0x4444ff,
+                    dashSize: 1000,
+                    gapSize: 1e10,
+                    linewidth: 5,
+                }));
+            this.scene.add(line);
+            return line;
+    };
+    graphTransformCartesianParametric = (fromfunc, toxfunc, toyfunc, from, to, segCnt, zoom, fraction) => {
+        let geometry = new BufferGeometry();
+            let eps = (to - from) / segCnt;
+            let points_t = [];
+            for (let t = from, x = -7; t <= to; t += eps, x += eps)
+                points_t.push(new Vector3(fraction * toxfunc(t * zoom) + (1 - fraction) * x, fraction * toyfunc(t * zoom) + (1 - fraction) * fromfunc(x * zoom), 0));
+            let points = new Float32Array(points_t.length * 3);
+            let numPoints = points_t.length;
+            let lineDistances = new Float32Array(numPoints);
+            geometry.setAttribute('position', new BufferAttribute(points, 3));
+            geometry.setAttribute('lineDistance', new BufferAttribute(lineDistances, 1));
+            // populate
+            for (let i = 0, index = 0, l = numPoints; i < l; i++, index += 3) {
+                points[index] = points_t[i].x;
+                points[index + 1] = points_t[i].y;
+                points[index + 2] = points_t[i].z;
+                if (i > 0)
+                    lineDistances[i] = lineDistances[i - 1] + points_t[i - 1].distanceTo(points_t[i]);
+            }
+            // console.log(lineDistances[numPoints - 1]);
+            let line = new Line(geometry, new LineDashedMaterial(
+                {
+                    color: 0x4444ff,
+                    dashSize: 1000,
+                    gapSize: 1e10,
+                    linewidth: 5,
+                }));
+            this.scene.add(line);
+            return line;
+    };
 
 // shapes
 
@@ -401,13 +548,13 @@ export class Animation {
         // side = scale(side, canvasX);
         this.createMeshes(new BoxBufferGeometry(side, side, side), texturePath, i, j, k, angleX, angleY, angleZ);
     };
-    createLineSquare = (sqLength, animate = false) => {
+    createLineSquare = (sqLength, x, y, animate = false) => {
         let squareShape = new Shape()
-            .moveTo(0, 0)
-            .lineTo(0, sqLength)
-            .lineTo(sqLength, sqLength)
-            .lineTo(sqLength, 0)
-            .lineTo(0, 0);
+            .moveTo(x, y)
+            .lineTo(x, y)
+            .lineTo(x + sqLength, y)
+            .lineTo(x + sqLength, y - sqLength)
+            .lineTo(x, y - sqLength);
         return this.createLineShapes(squareShape, 0xffffff, animate, 0, 0, 0, 0, 0, 0);
     };
 
@@ -428,7 +575,15 @@ export class Animation {
         }
         return this.createLineShapes(shape, 0xffffff, animate, x, y, 0.001, 0, 0, 0);
     };
-
+    
+    createArray = (numberOfElements, x , y, size, animate = true) => {
+        let ret = [];
+        for(let i = 0; i < numberOfElements; i++)
+        {
+            ret.push(this.createLineSquare(size, x + (i * size), y , animate));
+        }
+        return ret;
+    };
 // put is2D as true or false if you want 2D or 3D arrow respectively
     createArrow = (i1, j1, k1, i2, j2, k2, color, is2D) => {
         if (is2D) {

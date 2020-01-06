@@ -1,5 +1,5 @@
 import {Animation} from './index.js';
-import {draw, checkpoint, delay, fill, graphTransform, undraw, unfill, animateGraph} from "./animations.js";
+import {draw, checkpoint, delay, fill, graphTransform, undraw, unfill,animateArray, removeArray, animateGraph, graphTransformParametricCartesian, graphTransformCartesianParametric, graphTransformParametric} from "./animations.js";
 
 let anim = new Animation();
 // anim.createArrow(0, 0, 0, 1, 1, 0, 'red', true);
@@ -21,7 +21,16 @@ let myGraph2 = {
 };
 let Graph2 = anim.createGraph(myGraph2);
 
-anim.createPlotGrid();
+let axis = anim.createPlotGrid(-7, 7, 7, -7, true);
+anim.scene.add(axis[0]);
+anim.scene.add(axis[1]);
+anim.addAnimation(draw(axis[0],100));
+anim.addAnimation(draw(axis[1],100));
+
+let arr = anim.createArray(5, -1, 0, 0.5, true);
+animateArray(anim, arr);
+anim.addAnimation(checkpoint());
+removeArray(anim, arr);
 anim.addAnimation(draw(line, 10));
 anim.addAnimation(fill(mesh, 0.005, 0.4));
 anim.addAnimation(checkpoint());
@@ -50,7 +59,33 @@ anim.addAnimation(undraw({shape: temp2}, 10));
 anim.addAnimation(checkpoint());
 anim.addAnimation(draw(pgraph, 30));
 anim.addAnimation(checkpoint());
-anim.addAnimation(undraw({shape: pgraph}, 30));
+let temp3 = graphTransformParametricCartesian(
+    anim,pgraph,
+    (t) => 4 * Math.cos(t), (t) => 2 * Math.sin(t),
+    (x) => x,
+    0, 2 * Math.PI, 100, 1
+);
+anim.addAnimation(temp3);
+anim.addAnimation(checkpoint());
+anim.addAnimation(delay())
+let temp4 = graphTransformCartesianParametric(
+    anim,temp3,
+    (x) => x,
+    (t) => 4 * Math.cos(t), (t) => 2 * Math.sin(t),
+    0, 2 * Math.PI, 100, 1
+);
+anim.addAnimation(temp4);
+anim.addAnimation(checkpoint());
+anim.addAnimation(delay());
+let temp5 = graphTransformParametric(
+    anim,temp4,
+    (t) => 4 * Math.cos(t), (t) => 2 * Math.sin(t),
+    (t) => 3 * Math.cos(t), (t) => 3 * Math.sin(t),
+    0, 2 * Math.PI, 100, 1
+);
+anim.addAnimation(temp5);
+anim.addAnimation(checkpoint());
+anim.addAnimation(undraw({shape: temp5}, 30));
 anim.addAnimation(checkpoint());
 animateGraph(anim, myGraph, Graph);
 animateGraph(anim, myGraph2, Graph2);
