@@ -15,6 +15,7 @@ import {
     LineBasicMaterial,
     LineDashedMaterial,
     Mesh,
+    ShapeBufferGeometry,
     MeshBasicMaterial,
     MeshStandardMaterial,
     PerspectiveCamera,
@@ -26,9 +27,13 @@ import {
     TextGeometry,
     TextureLoader,
     Vector3,
-    WebGLRenderer
+    WebGLRenderer,
+    Group
 } from './node_modules/three/src/Three.js';
 import {OrbitControls} from './node_modules/three/examples/jsm/controls/OrbitControls.js';
+import {SVGLoader} from "./node_modules/three/examples/jsm/loaders/SVGLoader.js";
+import {draw} from "./animations.js";
+
 
 export class Animation {
 // let canvasX = ?widthOfCanvas?, canvasY = ?heightOfCanvas?;
@@ -36,42 +41,43 @@ export class Animation {
     constructor(controls = true) {
         this.isPlaying = false;
         this.hasPlayed = [];
-        this.animations = []; // Animations are a dictionary = {name, function, terminate_condition, ...variables}
+        this.animations = []; // Animations are a dictionary = {name, function, terminate_condition, ...letiables}
         this.start = 0; // the index from which to start playing animations, for optimized animations
 
         /* This way of animating is not provably optimal but works well with small number
         * of animations. We will think of better ways after this crude implementation works
         * as planned.
         */
-        this.container = document.querySelector('#scene-container');
+        this.container = document.getElementById('scene-container');
 
         this.scene = new Scene();
         this.scene.background = new Color(0x000000);
 
+
         this.createCamera();
-        if (controls)
-            this.createControls();
         this.createLights();
 
         this.createRenderer();
+        if (controls)
+            this.createControls();
         window.addEventListener('resize', () => {
             // set the aspect ratio to match the new browser window aspect ratio
             this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
-
+        
             // update the camera's frustum
             this.camera.updateProjectionMatrix();
-
+        
             // update the size of the renderer AND the canvas
             this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
-
+        
         });
 
 
         this.renderer.setAnimationLoop(() => {
-
+        
             this.update();
             this.render();
-
+        
         });
 
     };
@@ -79,11 +85,11 @@ export class Animation {
     createCamera = () => {
 
         this.camera = new PerspectiveCamera(
-            35, // FOV
-            this.container.clientWidth / this.container.clientHeight, // aspect
+            50, // FOV
+            window.innerWidth / window.innerHeight, // aspect
 
             0.1, // near clipping plane
-            100, // far clipping plane
+            1000, // far clipping plane
         );
 
         this.camera.position.set(0, 0, 10);
@@ -91,8 +97,7 @@ export class Animation {
     };
 
     createControls = () => {
-        new OrbitControls(this.camera, this.container);
-        console.log("YEET");
+        new OrbitControls(this.camera, this.renderer.domElement);
     };
     createLights = () => {
 
@@ -186,22 +191,18 @@ export class Animation {
     };
     createRenderer = () => {
         this.renderer = new WebGLRenderer({antialias: true});
-        this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+
+				this.renderer.setSize( window.innerWidth, window.innerHeight );
 
         this.renderer.setPixelRatio(window.devicePixelRatio);
-
-        this.renderer.gammaFactor = 2.2;
-        this.renderer.gammaOutput = true;
-        this.renderer.physicallyCorrectLights = true;
-
         this.container.appendChild(this.renderer.domElement);
     };
     addText = (text, color, textSize, x = 0, y = 0, animate = true) => {
 
         let content = "$$" + text + "$$";
-
+        
         MathJax.Hub.Register.StartupHook("End", () => {
-
+        
             // creates and adds a span element containing the SVG
             let contentSpan = MathJax.HTML.addElement(
                 this.container,
@@ -209,8 +210,8 @@ export class Animation {
                 {
                     id: "animatedTextMathJax", style:
                         {
-                            top: (this.container.clientHeight / 2 + y) + "px",
-                            left: (this.container.clientWidth / 2 + x) + "px",
+                            top: 200 + "vh",
+                            left: 200 + "vw",
                             visibility: "hidden",
                             fontSize: textSize + "%",
                         }
@@ -218,55 +219,62 @@ export class Animation {
                 [content]
             );
             contentSpan.style.color = color;
-
+        
             MathJax.Hub.Queue(["Typeset", MathJax.Hub, contentSpan], () => {
                 contentSpan.style.visibility = "visible";
             });
-
+        
             MathJax.Hub.Queue(() => {
-
                 // gets the parent SVG element
-                let mathJaxSpans = document.querySelectorAll("#animatedTextMathJax > .MathJax_SVG_Display > .MathJax_SVG");
-                let numSpans = mathJaxSpans.length;
+                let mainSVG = document.querySelector("#animatedTextMathJax > .MathJax_SVG_Display > .MathJax_SVG > svg");
+                mainSVG.setAttribute( "xmlns", "http://www.w3.org/2000/svg" );
 
-                // set the fill color as transparent
-                for (let i = 0; i < numSpans; i++) {
-                    let mainSVG = mathJaxSpans[i].querySelector(":scope > svg").querySelector(":scope > g");
-                    mainSVG.setAttribute("fill", "transparent");
+                let mainSVG_string = new XMLSerializer().serializeToString(mainSVG);
+                console.log(mainSVG_string);
+                let url = URL.createObjectURL(new Blob([mainSVG_string], {type: 'image/svg+xml'}));
+                let loader = new SVGLoader();
 
-                }
+                loader.load(url, ( data ) => {
 
-                // selects all the path like objects like <path>, <rect> etc.
-                let allThePaths = document.querySelectorAll("g :not(g)");
-                for (let i = 0; i < allThePaths.length; i++) {
-                    allThePaths[i].setAttribute("class", "path");   // CHANGE THIS!!!!!!!!! as it will remove the already present classes
-                    allThePaths[i].setAttribute("stroke-width", "30");
-                    allThePaths[i].setAttribute("stroke", "solid");
-                }
+                    let paths = data.paths;
 
-                // adds the required animation
-                let pathElem = document.getElementsByClassName("path");
-                for (let i = 0; i < pathElem.length; i++) {
-                    let length = pathElem[i].getTotalLength();
-                    pathElem[i].style["stroke-dasharray"] = length;
-                    pathElem[i].style["stroke-dashoffset"] = length;
-                }
-                let cnt = 0;
+                    let group = new Group();
+                    group.scale.multiplyScalar( 0.0008 );
+                    group.position.x = x;
+                    group.position.y = y;
+                    group.scale.y *= -1;
 
-                function loop() {
-                    setTimeout(() => {
-                        pathElem[cnt].setAttribute("fill", color);
-                        let animationTime = 1;
-                        if (!animate)
-                            animationTime = 0.01;
-                        pathElem[cnt].style.animation = "dash-and-fill " + animationTime + "s linear forwards";
-                        cnt++;
-                        if (cnt !== pathElem.length)
-                            loop();
-                    }, animate ? 150 : 0);
-                }
+                    for ( let i = 0; i < paths.length; i ++ ) {
 
-                loop();
+                        let shapes = paths[i].toShapes(true);
+
+                        for (let j = 0; j < shapes.length; j++) {
+
+                            let shape = shapes[j];
+                            let geometry = new BufferGeometry().fromGeometry(new ShapeGeometry(shape));let points = [];
+                            let points_temp = geometry.attributes.position.array;
+                            for (let i = 0; i < points_temp.length; i += 3) {
+                                points.push(new Vector3(points_temp[i], points_temp[i + 1], points_temp[i + 2]));
+                            }
+                            let numPoints = points.length;
+                            let lineDistances = new Float32Array(numPoints); // 1 value per point
+
+                            geometry.setAttribute('lineDistance', new BufferAttribute(lineDistances, 1));
+                            // populate
+                            for (let i = 0, index = 0, l = numPoints; i < l; i++, index += 3)
+                                if (animate && i > 0)
+                                    lineDistances[i] = lineDistances[i - 1] + points[i - 1].distanceTo(points[i]);
+                            let mesh = new Mesh(geometry, new LineDashedMaterial({color: color, dashSize: 0, gapSize: 100000}));
+
+                            group.add(mesh);
+                            this.addAnimation(draw(mesh, 150000));
+
+						}
+
+                    }
+                    this.scene.add( group );
+                    this.play();
+                });
             });
         });
     };
@@ -526,8 +534,8 @@ export class Animation {
                 }
             }
         }
-        if(!played)
-            this.stop();
+        // if(!played)
+        //     this.stop();
     };
     render = () => {
         this.renderer.render(this.scene, this.camera);

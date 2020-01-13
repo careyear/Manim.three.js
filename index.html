@@ -2,11 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
     <link href="style.css" rel="stylesheet" type="text/css">
     <title>Test</title>
-
-    <!-- MathJax Config -->
     <script type="text/x-mathjax-config">
         MathJax.Ajax.config.path["mhchem"] = "https://cdnjs.cloudflare.com/ajax/libs/mathjax-mhchem/3.3.2";
         MathJax.Hub.Config({
@@ -28,8 +26,10 @@
 </head>
 <body>
     <div id="scene-container"></div>
+    <br>
+    <div id="container"></div>
+
     <script src="node_modules/ccapture.js/build/CCapture.all.min.js"></script>
     <script type="module" src="example.js"></script>
-
 </body>
 </html>
