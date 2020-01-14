@@ -2,10 +2,9 @@ import {Animation} from './index.js';
 import {draw, checkpoint, delay, fill, graphTransform, undraw, unfill, animateGraph} from "./animations.js";
 
 let anim = new Animation();
-anim.createArrow(0, 0, 0, 1, 1, 0, 'red', true);
 let line = anim.createLineCircle(1, 0, 0, 1000, true);
 let mesh = anim.fill(line.geometry, 0xff00ff, 0);
-anim.addText("\\begin{matrix}1 & x & x^2 \\\\1 & y & y^2 \\\\1 & z & z^2 \\end{matrix}\\\\\\sum_{i=1}^{\\infty}\\frac{1}{2^i}=1", '#ffffff', 50, 5);
+anim.addText("\\begin{matrix}1 & x & x^2 \\\\1 & y & y^2 \\\\1 & z & z^2 \\end{matrix}\\\\\\sum_{i=1}^{\\infty}\\frac{1}{2^i}=1", '#ffffff', 8, 4);
 let graph = anim.createGraph2D((x) => x * x - 2, 100, 1, true);
 let pgraph = anim.createGraph2DParametric((t) => 4 * Math.cos(t), (t) => 2 * Math.sin(t), 0, 2 * Math.PI, 100, 1, true);
 anim.scene.add(graph);

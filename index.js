@@ -43,6 +43,7 @@ export class Animation {
         this.hasPlayed = [];
         this.animations = []; // Animations are a dictionary = {name, function, terminate_condition, ...letiables}
         this.start = 0; // the index from which to start playing animations, for optimized animations
+        this.delay = 0;
 
         /* This way of animating is not provably optimal but works well with small number
         * of animations. We will think of better ways after this crude implementation works
@@ -230,7 +231,6 @@ export class Animation {
                 mainSVG.setAttribute( "xmlns", "http://www.w3.org/2000/svg" );
 
                 let mainSVG_string = new XMLSerializer().serializeToString(mainSVG);
-                console.log(mainSVG_string);
                 let url = URL.createObjectURL(new Blob([mainSVG_string], {type: 'image/svg+xml'}));
                 let loader = new SVGLoader();
 
@@ -239,7 +239,7 @@ export class Animation {
                     let paths = data.paths;
 
                     let group = new Group();
-                    group.scale.multiplyScalar( 0.0008 );
+                    group.scale.multiplyScalar( 0.00008 * textSize);
                     group.position.x = x;
                     group.position.y = y;
                     group.scale.y *= -1;
@@ -274,6 +274,7 @@ export class Animation {
                     }
                     this.scene.add( group );
                     this.play();
+                    this.record();
                 });
             });
         });
@@ -513,15 +514,14 @@ export class Animation {
                 return;
             }
             else if (currentAnimation.name === "delay") {
-                // noinspection StatementWithEmptyBodyJS
-                let a = 1312, b = 73, c = 82782;
-                for(let temp = 0;temp < 100000000; temp++){
-                    // bogus calculation for a small delay
-                    a = (a * b) % c;
-                    a++;
+                console.log(this.delay);
+                if(this.delay === 70)
+                {
+                    this.hasPlayed[i] = true;
+                    this.start = i + 1;
+                    this.delay = 0;
                 }
-                this.hasPlayed[i] = true;
-                this.start = i + 1;
+                else this.delay++;
                 return;
             }
             if (!this.hasPlayed[i]) {
@@ -534,8 +534,8 @@ export class Animation {
                 }
             }
         }
-        // if(!played)
-        //     this.stop();
+        if(!played)
+            this.stop();
     };
     render = () => {
         this.renderer.render(this.scene, this.camera);
@@ -555,6 +555,7 @@ export class Animation {
         this.renderer.setAnimationLoop(null);
         if(this.capturer)
         {
+            console.log("STOPPED");
             this.capturer.save();
             this.capturer.stop();
         }
