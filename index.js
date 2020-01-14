@@ -74,20 +74,23 @@ export class Animation {
         });
 
 
-        this.renderer.setAnimationLoop(() => {
-        
-            this.update();
-            this.render();
-        
-        });
+        this.renderer.setAnimationLoop(null);
 
+    };
+    createRenderer = () => {
+        this.renderer = new WebGLRenderer({antialias: true});
+
+				this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+
+        this.renderer.setPixelRatio(window.devicePixelRatio);
+        this.container.appendChild(this.renderer.domElement);
     };
 
     createCamera = () => {
 
         this.camera = new PerspectiveCamera(
             50, // FOV
-            window.innerWidth / window.innerHeight, // aspect
+            this.container.clientWidth / this.container.clientHeight, // aspect
 
             0.1, // near clipping plane
             1000, // far clipping plane
@@ -190,14 +193,6 @@ export class Animation {
         this.scene.add(mesh);
         return material;
     };
-    createRenderer = () => {
-        this.renderer = new WebGLRenderer({antialias: true});
-
-				this.renderer.setSize( window.innerWidth, window.innerHeight );
-
-        this.renderer.setPixelRatio(window.devicePixelRatio);
-        this.container.appendChild(this.renderer.domElement);
-    };
     addText = (text, color, textSize, x = 0, y = 0, animate = true) => {
 
         let content = "$$" + text + "$$";
@@ -219,10 +214,8 @@ export class Animation {
                 },
                 [content]
             );
-            contentSpan.style.color = color;
-        
             MathJax.Hub.Queue(["Typeset", MathJax.Hub, contentSpan], () => {
-                contentSpan.style.visibility = "visible";
+                contentSpan.style.display = "none";
             });
         
             MathJax.Hub.Queue(() => {
@@ -273,8 +266,9 @@ export class Animation {
 
                     }
                     this.scene.add( group );
+                    console.log("PLAY");
                     this.play();
-                    this.record();
+                    // this.record();
                 });
             });
         });
@@ -710,7 +704,6 @@ export class Animation {
         this.renderer.setAnimationLoop(null);
         if(this.capturer)
         {
-            console.log("STOPPED");
             this.capturer.save();
             this.capturer.stop();
         }
