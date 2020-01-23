@@ -22,7 +22,6 @@ let myGraph2 = {
 let axis = anim.createPlotGrid(-10, 7, 10, -7, true);
 anim.scene.add(axis[0]);
 anim.scene.add(axis[1]);
-let arr = anim.createArray(5, -4, 2, 0.5, true);
 anim.addText("\\begin{matrix}1 & x & x^2 \\\\1 & y & y^2 \\\\1 & z & z^2 \\end{matrix}\\", '#ffffff', 8, 4, 2)
     .then(async mesh_array => {
         for (let i = 0; i < mesh_array.length; i++)
@@ -35,8 +34,10 @@ anim.addText("\\begin{matrix}1 & x & x^2 \\\\1 & y & y^2 \\\\1 & z & z^2 \\end{m
             anim.addAnimation(undraw({shape: mesh_array[i]}, 150000));
         anim.addAnimation(checkpoint());
         anim.addAnimation(delay());
+        let arr = await anim.createArray([10, 2, 45], -4, 2, 0.5, true);
         animateArray(anim, arr);
         anim.addAnimation(checkpoint());
+        anim.addAnimation(delay());
         removeArray(anim, arr);
         anim.addAnimation(draw(line, 10));
         anim.addAnimation(fill(mesh, 0.005, 0.4));

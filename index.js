@@ -209,11 +209,9 @@ export class Animation {
         return MathJax.tex2svgPromise(content)
             .then(node => {
                 let mainSVG = node.getElementsByTagName("svg")[0];
-                // console.log(mainSVG);
                 let uses = mainSVG.getElementsByTagName("use");
                 let defs = mainSVG.getElementsByTagName("defs")[0];
                 let len = uses.length, app = [], par = [], rem = [];
-                // console.log(uses);
                 for(let i = 0;i < len; i++)
                 {
                     let domElement = uses[i], id = domElement.attributes["xlink:href"];
@@ -227,8 +225,6 @@ export class Animation {
                 }
                 mainSVG.removeChild(defs);
                 mainSVG.setAttribute("xmlns", "http://www.w3.org/2000/svg");
-                // console.log(mainSVG);
-                document.body.append(mainSVG);
                 let url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(mainSVG)], {type: 'image/svg+xml'}));
                 const SVGPromiseLoader = promisifyLoader(new SVGLoader());
 
@@ -584,11 +580,12 @@ export class Animation {
         return this.createLineShapes(shape, 0xffffff, animate, x, y, 0.001, 0, 0, 0);
     };
     
-    createArray = (numberOfElements, x , y, size, animate = true) => {
+    createArray = async (array, x , y, size, animate = true) => {
         let ret = [];
-        for(let i = 0; i < numberOfElements; i++)
+        for(let i = 0; i < array.length; i++)
         {
-            ret.push(this.createLineSquare(size, x + (i * size), y , animate));
+            ret.push((await this.addText(array[i].toString(10), "#ffffff", 5, x + i * size + 0.45, y - 0.55, animate))[0]);
+            ret.push(this.createLineSquare(size, x + i * size, y , animate));
         }
         return ret;
     };
@@ -644,10 +641,8 @@ export class Animation {
         }
         for(let i = 0; i < graph.nodes.length; i++) {
             let label = i + 1;
-            let arr = await this.addText(label.toString(10), "#ffffff", 5, graph.nodes[i].x - radius / 2.0, graph.nodes[i].y - radius / 2.0, 0.02);
-            ret.push(arr[0]);
+            ret.push((await this.addText(label.toString(10), "#ffffff", 5, graph.nodes[i].x - radius / 2.0, graph.nodes[i].y - radius / 2.0, 0.02))[0]);
         }
-        console.log(ret);
         return ret;
     };
 
