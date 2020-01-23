@@ -141,16 +141,20 @@ export let animateGraph = (anim, graph, geometry) => {
         }
     }
 };
-export let animateArray = (anim, geometry) => {
-    for (let i = 0; i < geometry.length; i+=2) {
-        anim.addAnimation(draw(geometry[i], 120000));
-        anim.addAnimation(draw(geometry[i+1],3));
+export let animateArray = (anim, geometry, length) => {
+    for (let i = 0; i < geometry.length; i++) {
+        if (i >= length)
+            anim.addAnimation(draw(geometry[i], 120000));
+        else
+            anim.addAnimation(draw(geometry[i],8));
     }
 };
-export let removeArray = (anim, geometry) => {
+export let removeArray = (anim, geometry, length) => {
     for(let i = 0; i < geometry.length; i++) {
-        let obj = geometry[i];
-        anim.addAnimation(undraw({shape: obj},2));
+        if (i >= length)
+            anim.addAnimation(undraw({shape: geometry[i]}, 120000));
+        else
+            anim.addAnimation(undraw({shape: geometry[i]},8));
     }
 };
 

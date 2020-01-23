@@ -23,7 +23,7 @@ import {draw, checkpoint, delay, fill, graphTransform, undraw, unfill,animateArr
     let axis = anim.createPlotGrid(-10, 7, 10, -7, true);
     anim.scene.add(axis[0]);
     anim.scene.add(axis[1]);
-    let mesh_array = await anim.addText("\\begin{matrix}1 & x & x^2 \\\\1 & y & y^2 \\\\1 & z & z^2 \\end{matrix}\\", '#ffffff', 8, 4, 2)
+    let mesh_array = await anim.addText("\\begin{matrix}1 0 & x & x^2 \\\\1 & y & y^2 \\\\1 & xy & z^2 \\end{matrix}\\", '#ffffff', 8, 3, 2);
     for (let i = 0; i < mesh_array.length; i++)
         anim.addAnimation(draw(mesh_array[i], 150000));
     anim.addAnimation(checkpoint());
@@ -34,11 +34,11 @@ import {draw, checkpoint, delay, fill, graphTransform, undraw, unfill,animateArr
         anim.addAnimation(undraw({shape: mesh_array[i]}, 150000));
     anim.addAnimation(checkpoint());
     anim.addAnimation(delay());
-    let arr = await anim.createArray([10, 2, 45], -4, 2, 0.5, true);
-    animateArray(anim, arr);
+    let arr = await anim.createArray(["A_0", "A_1", "A_2", "A_4"], -4, 2, 0.5, true);
+    animateArray(anim, arr, 4);
     anim.addAnimation(checkpoint());
     anim.addAnimation(delay());
-    removeArray(anim, arr);
+    removeArray(anim, arr, 4);
     anim.addAnimation(draw(line, 10));
     anim.addAnimation(fill(mesh, 0.005, 0.4));
     anim.addAnimation(checkpoint());

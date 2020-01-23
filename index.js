@@ -577,10 +577,10 @@ export class Animation {
     createArray = async (array, x , y, size, animate = true) => {
         let ret = [];
         for(let i = 0; i < array.length; i++)
-        {
-            ret.push((await this.addText(array[i].toString(10), "#ffffff", 5, x + i * size + 0.45, y - 0.55, animate))[0]);
             ret.push(this.createLineSquare(size, x + i * size, y , animate));
-        }
+        for(let i = 0; i < array.length; i++)
+            ret = ret.concat(await this.addText(array[i], "#ffffff", 6 * size, x + i * (size - 0.05) + 0.5, y - 0.6 * (size - 0.5) - 0.5, animate));
+        console.log(ret);
         return ret;
     };
 
@@ -633,7 +633,7 @@ export class Animation {
         }
         for(let i = 0; i < graph.nodes.length; i++) {
             let label = i + 1;
-            ret.push((await this.addText(label.toString(10), "#ffffff", 5, graph.nodes[i].x - radius / 2.0, graph.nodes[i].y - radius / 2.0, 0.02))[0]);
+            ret = ret.concat(await this.addText(label.toString(10), "#ffffff", 5, graph.nodes[i].x - radius / 2.0, graph.nodes[i].y - radius / 2.0, 0.02));
         }
         return ret;
     };
