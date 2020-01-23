@@ -6,22 +6,13 @@
     <link href="style.css" rel="stylesheet" type="text/css">
     <title>Test</title>
     <script type="text/x-mathjax-config">
-        MathJax.Ajax.config.path["mhchem"] = "https://cdnjs.cloudflare.com/ajax/libs/mathjax-mhchem/3.3.2";
-        MathJax.Hub.Config({
-            SVG: {
-                scale: 420,
-                useGlobalCache: true,
-                useFontCache: false,
-                font: "Latin-Modern"
-            },
-            TeX: {
-                extensions: ["[mhchem]/mhchem.js"]
-            }
-        });
+        MathJax = {
+            loader: {load: ['input/tex-base', 'output/svg', 'ui/menu', '[tex]/mhchem']},
+            tex: {packages: {'[+]': ['mhchem']}}
+        };
 
     </script>
-
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.4/MathJax.js?config=TeX-AMS_SVG"></script>
+    <script type="text/javascript" id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
 
 </head>
 <body>

@@ -130,14 +130,16 @@ export let graphTransformCartesianParametric = (anim, pastInit, fromfunc, toxfun
     return ret;
 };
 export let animateGraph = (anim, graph, geometry) => {
-    for(let i in geometry) {
-    let obj = geometry[i];
-    anim.addAnimation(draw(obj, 3));
-    if(i < graph.nodes.length) {
-        anim.addAnimation(fill(anim.fill(obj.geometry, 0x000000, 0, graph.nodes[i].x, graph.nodes[i].y, 0.001), 1));
-
+    for(let i = 0;i <geometry.length; i++) {
+        let obj = geometry[i];
+        if(i < graph.nodes.length + graph.edges.length)
+            anim.addAnimation(draw(obj, 3));
+        else
+            anim.addAnimation(draw(obj, 300000));
+        if(i < graph.nodes.length) {
+            anim.addAnimation(fill(anim.fill(obj.geometry, 0x000000, 0, graph.nodes[i].x, graph.nodes[i].y, 0.001), 1));
+        }
     }
-}
 };
 export let animateArray = (anim, geometry) => {
     for (let i in geometry) {

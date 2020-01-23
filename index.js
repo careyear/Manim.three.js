@@ -14,6 +14,7 @@ import {
     Line,
     LineBasicMaterial,
     LineDashedMaterial,
+    LoadingManager,
     Mesh,
     ShapeBufferGeometry,
     MeshBasicMaterial,
@@ -33,6 +34,16 @@ import {
 import {OrbitControls} from './node_modules/three/examples/jsm/controls/OrbitControls.js';
 import {SVGLoader} from "./node_modules/three/examples/jsm/loaders/SVGLoader.js";
 import {draw} from "./animations.js";
+
+const promisifyLoader = ( loader, onProgress ) => {
+    const promiseLoader = async url => new Promise( ( resolve, reject ) => {
+        loader.load(url, resolve, onProgress, reject);
+    });
+    return {
+        originalLoader: loader,
+        load: promiseLoader,
+    };
+};
 
 
 export class Animation {
@@ -193,85 +204,79 @@ export class Animation {
         this.scene.add(mesh);
         return material;
     };
-    addText = (text, color, textSize, x = 0, y = 0, animate = true) => {
-
-        let content = "$$" + text + "$$";
-        
-        MathJax.Hub.Register.StartupHook("End", () => {
-        
-            // creates and adds a span element containing the SVG
-            let contentSpan = MathJax.HTML.addElement(
-                this.container,
-                "span",
+    addText = (content, color, textSize, x = 0, y = 0, z = 0, animate = true) => {
+        MathJax.texReset();
+        return MathJax.tex2svgPromise(content)
+            .then(node => {
+                let mainSVG = node.getElementsByTagName("svg")[0];
+                // console.log(mainSVG);
+                let uses = mainSVG.getElementsByTagName("use");
+                let defs = mainSVG.getElementsByTagName("defs")[0];
+                let len = uses.length, app = [], par = [], rem = [];
+                // console.log(uses);
+                for(let i = 0;i < len; i++)
                 {
-                    id: "animatedTextMathJax", style:
-                        {
-                            top: 200 + "vh",
-                            left: 200 + "vw",
-                            visibility: "hidden",
-                            fontSize: textSize + "%",
+                    let domElement = uses[i], id = domElement.attributes["xlink:href"];
+                    app.push(defs.querySelector(id.value));
+                    par.push(domElement.parentNode);
+                    rem.push(domElement);
+                }
+                for(let i = 0;i < len; i ++) {
+                    par[i].append(app[i].cloneNode(false));
+                    par[i].removeChild(rem[i]);
+                }
+                mainSVG.removeChild(defs);
+                mainSVG.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+                // console.log(mainSVG);
+                document.body.append(mainSVG);
+                let url = URL.createObjectURL(new Blob([new XMLSerializer().serializeToString(mainSVG)], {type: 'image/svg+xml'}));
+                const SVGPromiseLoader = promisifyLoader(new SVGLoader());
+
+                return SVGPromiseLoader.load(url);
+            })
+            .then((data) => {
+                let paths = data.paths;
+
+                let group = new Group();
+                group.scale.multiplyScalar(0.00008 * textSize);
+                group.position.x = x;
+                group.position.y = y;
+                group.position.z = z;
+                group.scale.y *= -1;
+
+                for (let i = 0; i < paths.length; i++) {
+
+                    let shapes = paths[i].toShapes(true);
+
+                    for (let j = 0; j < shapes.length; j++) {
+
+                        let shape = shapes[j];
+                        let geometry = new BufferGeometry().fromGeometry(new ShapeGeometry(shape));
+                        let points = [];
+                        let points_temp = geometry.attributes.position.array;
+                        for (let i = 0; i < points_temp.length; i += 3) {
+                            points.push(new Vector3(points_temp[i], points_temp[i + 1], points_temp[i + 2]));
                         }
-                },
-                [content]
-            );
-            MathJax.Hub.Queue(["Typeset", MathJax.Hub, contentSpan], () => {
-                contentSpan.style.display = "none";
-            });
-        
-            MathJax.Hub.Queue(() => {
-                // gets the parent SVG element
-                let mainSVG = document.querySelector("#animatedTextMathJax > .MathJax_SVG_Display > .MathJax_SVG > svg");
-                mainSVG.setAttribute( "xmlns", "http://www.w3.org/2000/svg" );
+                        let numPoints = points.length;
+                        let lineDistances = new Float32Array(numPoints); // 1 value per point
 
-                let mainSVG_string = new XMLSerializer().serializeToString(mainSVG);
-                let url = URL.createObjectURL(new Blob([mainSVG_string], {type: 'image/svg+xml'}));
-                let loader = new SVGLoader();
+                        geometry.setAttribute('lineDistance', new BufferAttribute(lineDistances, 1));
+                        // populate
+                        for (let i = 0, index = 0, l = numPoints; i < l; i++, index += 3)
+                            if (animate && i > 0)
+                                lineDistances[i] = lineDistances[i - 1] + points[i - 1].distanceTo(points[i]);
+                        let mesh = new Mesh(geometry, new LineDashedMaterial({
+                            color: color,
+                            dashSize: 0,
+                            gapSize: 100000
+                        }));
 
-                loader.load(url, ( data ) => {
-
-                    let paths = data.paths;
-
-                    let group = new Group();
-                    group.scale.multiplyScalar( 0.00008 * textSize);
-                    group.position.x = x;
-                    group.position.y = y;
-                    group.scale.y *= -1;
-
-                    for ( let i = 0; i < paths.length; i ++ ) {
-
-                        let shapes = paths[i].toShapes(true);
-
-                        for (let j = 0; j < shapes.length; j++) {
-
-                            let shape = shapes[j];
-                            let geometry = new BufferGeometry().fromGeometry(new ShapeGeometry(shape));let points = [];
-                            let points_temp = geometry.attributes.position.array;
-                            for (let i = 0; i < points_temp.length; i += 3) {
-                                points.push(new Vector3(points_temp[i], points_temp[i + 1], points_temp[i + 2]));
-                            }
-                            let numPoints = points.length;
-                            let lineDistances = new Float32Array(numPoints); // 1 value per point
-
-                            geometry.setAttribute('lineDistance', new BufferAttribute(lineDistances, 1));
-                            // populate
-                            for (let i = 0, index = 0, l = numPoints; i < l; i++, index += 3)
-                                if (animate && i > 0)
-                                    lineDistances[i] = lineDistances[i - 1] + points[i - 1].distanceTo(points[i]);
-                            let mesh = new Mesh(geometry, new LineDashedMaterial({color: color, dashSize: 0, gapSize: 100000}));
-
-                            group.add(mesh);
-                            this.addAnimation(draw(mesh, 150000));
-
-						}
-
+                        group.add(mesh);
                     }
-                    this.scene.add( group );
-                    console.log("PLAY");
-                    this.play();
-                    // this.record();
-                });
+                }
+                this.scene.add(group);
+                return group.children;
             });
-        });
     };
     createPlotGrid = (topLeftX, topLeftY, bottomRightX, bottomRightY, animate = true) => {
         if (animate) {
@@ -626,9 +631,9 @@ export class Animation {
 
     };
 
-    createGraph = (graph, radius = 0.25, animate = true) => {
+    createGraph = async (graph, radius = 0.25, animate = true) => {
         let ret = [];
-        for(let i in graph.nodes) {
+        for(let i = 0; i < graph.nodes.length; i++) {
             let node = graph.nodes[i];
             // noinspection JSUnfilteredForInLoop
             ret.push(this.createLineCircle(radius, node.x, node.y, 50, animate));
@@ -637,6 +642,12 @@ export class Animation {
             let edge = graph.edges[i];
             ret.push(this.createLine(graph.nodes[edge[0]].x, graph.nodes[edge[0]].y, graph.nodes[edge[1]].x, graph.nodes[edge[1]].y));
         }
+        for(let i = 0; i < graph.nodes.length; i++) {
+            let label = i + 1;
+            let arr = await this.addText(label.toString(10), "#ffffff", 5, graph.nodes[i].x - radius / 2.0, graph.nodes[i].y - radius / 2.0, 0.02);
+            ret.push(arr[0]);
+        }
+        console.log(ret);
         return ret;
     };
 
@@ -647,8 +658,6 @@ export class Animation {
     };
 
     addAnimation = (animation) => {
-        if (this.isPlaying)
-            return;
         this.animations.push(animation);
         this.hasPlayed.push(false);
     };
@@ -663,7 +672,6 @@ export class Animation {
                 return;
             }
             else if (currentAnimation.name === "delay") {
-                console.log(this.delay);
                 if(this.delay === 70)
                 {
                     this.hasPlayed[i] = true;
