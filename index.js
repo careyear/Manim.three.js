@@ -45,7 +45,6 @@ const promisifyLoader = ( loader, onProgress ) => {
     };
 };
 
-
 export class Animation {
 // let canvasX = ?widthOfCanvas?, canvasY = ?heightOfCanvas?;
 
@@ -96,7 +95,6 @@ export class Animation {
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.container.appendChild(this.renderer.domElement);
     };
-
     createCamera = () => {
 
         this.camera = new PerspectiveCamera(
@@ -110,7 +108,6 @@ export class Animation {
         this.camera.position.set(0, 0, 10);
 
     };
-
     createControls = () => {
         new OrbitControls(this.camera, this.renderer.domElement);
     };
@@ -153,6 +150,7 @@ export class Animation {
         this.scene.add(mesh);
         return mesh;
     };
+
     createLine = (x1, y1, x2, y2) => {
         let geometry = new BufferGeometry();
         geometry.setAttribute('position', new BufferAttribute(new Float32Array([
@@ -546,8 +544,6 @@ export class Animation {
             return line;
     };
 
-// shapes
-
     createCube = (side, texturePath = './textures/wood.jpg', i = 0, j = 0, k = 0, angleX = 0, angleY = 0, angleZ = 0) => {
         // side = scale(side, canvasX);
         this.createMeshes(new BoxBufferGeometry(side, side, side), texturePath, i, j, k, angleX, angleY, angleZ);
@@ -561,13 +557,11 @@ export class Animation {
             .lineTo(x, y - sqLength);
         return this.createLineShapes(squareShape, 0xffffff, animate, 0, 0, 0, 0, 0, 0);
     };
-
     createSphere = (radius, widthSegments, heightSegments, texturePath = './textures/wood.jpg', i = 0, j = 0, k = 0, angleX = 0, angleY = 0, angleZ = 0) => {
 
         // radius = scale(radius, canvasX);
         return this.createMeshes(new SphereGeometry(radius, widthSegments, heightSegments), texturePath, i, j, k, angleX, angleY, angleZ);
     };
-
     createLineCircle = (radius, x, y, numberOfSegments = 1000, animate = true) => {
         let shape = new Shape().moveTo(radius, 0);
         for (let i = 1; i <= numberOfSegments; i++) {
@@ -579,7 +573,7 @@ export class Animation {
         }
         return this.createLineShapes(shape, 0xffffff, animate, x, y, 0.001, 0, 0, 0);
     };
-    
+
     createArray = async (array, x , y, size, animate = true) => {
         let ret = [];
         for(let i = 0; i < array.length; i++)
@@ -589,7 +583,7 @@ export class Animation {
         }
         return ret;
     };
-// put is2D as true or false if you want 2D or 3D arrow respectively
+
     createArrow = (i1, j1, k1, i2, j2, k2, color, is2D) => {
         if (is2D) {
             k1 = 0;
@@ -608,8 +602,6 @@ export class Animation {
         this.scene.add(geometry);
 
     };
-
-// for example, arr = [[0, 0, 0], [1, 1, 1], [5, 2, 8]]
     createPolygon = (hex, arr) => {
 
         let material = new LineBasicMaterial({
@@ -646,8 +638,6 @@ export class Animation {
         return ret;
     };
 
-
-    // need to find what `original` is
     scale = (coordinate, original) => {
         return coordinate / 1000 * original; // 1000 = artificial width and height of the canvas
     };
@@ -656,7 +646,6 @@ export class Animation {
         this.animations.push(animation);
         this.hasPlayed.push(false);
     };
-
     update = () => {
         let played = false;
         for (let i = this.start; i < this.animations.length; i++) {
@@ -711,7 +700,6 @@ export class Animation {
             this.capturer.stop();
         }
     };
-
     record = () => {
         this.capturer = new CCapture({format: 'webm', framerate: 60});
         this.capturer.start();
