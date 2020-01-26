@@ -1,12 +1,12 @@
 import {Animation} from './index.js';
-import {draw, checkpoint, delay, fill, graphTransform, undraw, unfill,animateArray, removeArray, animateGraph, graphTransformParametricCartesian, graphTransformCartesianParametric, graphTransformParametric} from "./animations.js";
+import {draw, checkpoint, delay, fill, graphTransform, undraw, unfill,animateArray, removeArray, showGraph, removeGraph, graphTransformParametricCartesian, graphTransformCartesianParametric, graphTransformParametric, showArrow, removeArrow} from "./animations.js";
 
 
 (async () => {
     let anim = new Animation();
+    let arrow = anim.createArrow(0, 0, 0, 1, 1, 0, 0.0002, 0xffffff, true);
     let line = anim.createLineCircle(1, 0, 0, 1000, true);
     let mesh = anim.fill(line.geometry, 0xff00ff, 0);
-    anim.addAnimation(checkpoint());
     let graph = anim.createGraph2D((x) => x * x - 2, 100, 1, true);
     let pgraph = anim.createGraph2DParametric((t) => 4 * Math.cos(t), (t) => 2 * Math.sin(t), 0, 2 * Math.PI, 100, 1, true);
     anim.scene.add(graph);
@@ -24,6 +24,11 @@ import {draw, checkpoint, delay, fill, graphTransform, undraw, unfill,animateArr
     anim.scene.add(axis[0]);
     anim.scene.add(axis[1]);
     let mesh_array = await anim.addText("\\begin{matrix}1 0 & x & x^2 \\\\1 & y & y^2 \\\\1 & xy & z^2 \\end{matrix}\\", '#ffffff', 8, 3, 2);
+
+    anim.addAnimation(showArrow(anim, arrow, Math.sqrt(2)));
+    anim.addAnimation(checkpoint());
+    anim.addAnimation(removeArrow(anim, arrow, Math.sqrt(2)));
+    //
     for (let i = 0; i < mesh_array.length; i++)
         anim.addAnimation(draw(mesh_array[i], 150000));
     anim.addAnimation(checkpoint());
@@ -99,9 +104,9 @@ import {draw, checkpoint, delay, fill, graphTransform, undraw, unfill,animateArr
     anim.addAnimation(checkpoint());
     anim.addAnimation(delay());
     let Graph = await anim.createGraph(myGraph);
-    animateGraph(anim, myGraph, Graph);
-    let Graph2 = await anim.createGraph(myGraph2);
-    animateGraph(anim, myGraph2, Graph2);
+    showGraph(anim, myGraph, Graph);
+    let Graph2 = await anim.createGraph(myGraph2, true);
+    showGraph(anim, myGraph2, Graph2, true);
     let array = await anim.addText("\\sum_{i=1}^{\\infty}\\frac{1}{2^i}=1", '#ffffff', 8, -1, -1);
     for (let i = 0; i < array.length; i++)
         anim.addAnimation(draw(array[i], 400000));
@@ -109,5 +114,9 @@ import {draw, checkpoint, delay, fill, graphTransform, undraw, unfill,animateArr
     anim.addAnimation(delay());
     for (let i = 0; i < array.length; i++)
         anim.addAnimation(undraw({shape: array[i]}, 400000));
+    anim.addAnimation(checkpoint());
+    removeGraph(anim, myGraph, Graph);
+    removeGraph(anim, myGraph2, Graph2, true);
+    // anim.record();
     anim.play();
 })();

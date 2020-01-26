@@ -580,11 +580,10 @@ export class Animation {
             ret.push(this.createLineSquare(size, x + i * size, y , animate));
         for(let i = 0; i < array.length; i++)
             ret = ret.concat(await this.addText(array[i], "#ffffff", 6 * size, x + i * (size - 0.05) + 0.5, y - 0.6 * (size - 0.5) - 0.5, animate));
-        console.log(ret);
         return ret;
     };
 
-    createArrow = (i1, j1, k1, i2, j2, k2, color, is2D) => {
+    createArrow = (i1, j1, k1, i2, j2, k2, length, color, is2D) => {
         if (is2D) {
             k1 = 0;
             k2 = 0;
@@ -595,12 +594,11 @@ export class Animation {
         dir.normalize();
 
         let origin = new Vector3(i1, j1, k1);
-        let length = Math.sqrt(Math.pow((i2 - i1), 2) + Math.pow((j2 - j1), 2) + Math.pow((k2 - k1), 2));
 
         let geometry = new ArrowHelper(dir, origin, length, color);
 
         this.scene.add(geometry);
-
+        return geometry;
     };
     createPolygon = (hex, arr) => {
 
@@ -620,7 +618,7 @@ export class Animation {
 
     };
 
-    createGraph = async (graph, radius = 0.25, animate = true) => {
+    createGraph = async (graph, directed = false, radius = 0.25, animate = true) => {
         let ret = [];
         for(let i = 0; i < graph.nodes.length; i++) {
             let node = graph.nodes[i];
@@ -629,17 +627,16 @@ export class Animation {
         }
         for(let i in graph.edges) {
             let edge = graph.edges[i];
-            ret.push(this.createLine(graph.nodes[edge[0]].x, graph.nodes[edge[0]].y, graph.nodes[edge[1]].x, graph.nodes[edge[1]].y));
+            if(directed)
+                ret.push(this.createArrow(graph.nodes[edge[0]].x, graph.nodes[edge[0]].y, 0, graph.nodes[edge[1]].x, graph.nodes[edge[1]].y, 0, 0.0002, 0xffffff, true));
+            else
+                ret.push(this.createLine(graph.nodes[edge[0]].x, graph.nodes[edge[0]].y, graph.nodes[edge[1]].x, graph.nodes[edge[1]].y));
         }
         for(let i = 0; i < graph.nodes.length; i++) {
             let label = i + 1;
             ret = ret.concat(await this.addText(label.toString(10), "#ffffff", 5, graph.nodes[i].x - radius / 2.0, graph.nodes[i].y - radius / 2.0, 0.02));
         }
         return ret;
-    };
-
-    scale = (coordinate, original) => {
-        return coordinate / 1000 * original; // 1000 = artificial width and height of the canvas
     };
 
     addAnimation = (animation) => {
