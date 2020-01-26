@@ -32,7 +32,7 @@ import {
     Group
 } from './node_modules/three/src/Three.js';
 import {OrbitControls} from './node_modules/three/examples/jsm/controls/OrbitControls.js';
-import {SVGLoader} from "./node_modules/three/examples/jsm/loaders/SVGLoader.js";
+import {SVGLoader} from "./SVGLoader.js";
 import {draw} from "./animations.js";
 
 const promisifyLoader = ( loader, onProgress ) => {
