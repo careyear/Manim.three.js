@@ -9,6 +9,7 @@ import {draw, checkpoint, delay, fill, graphTransform, undraw, unfill,animateArr
     let mesh = anim.fill(line.geometry, 0xff00ff, 0);
     let graph = anim.createGraph2D((x) => x * x - 2, 100, 1, true);
     let pgraph = anim.createGraph2DParametric((t) => 4 * Math.cos(t), (t) => 2 * Math.sin(t), 0, 2 * Math.PI, 100, 1, true);
+    let text3D = anim.create3DAlignedText(['sup'], "#aec9d6", 1, 0, 2, 0, 'italic');
     anim.scene.add(graph);
     anim.scene.add(pgraph);
     let myGraph = {
@@ -20,10 +21,16 @@ import {draw, checkpoint, delay, fill, graphTransform, undraw, unfill,animateArr
         edges: [[0, 3], [1, 3], [0, 4], [0, 5], [2, 5], [1, 3]]
     };
 
+    // anim.scene.add(text3D);
+    anim.addAnimation(draw(text3D, 1));
+
     let axis = anim.createPlotGrid(-10, 7, 10, -7, true);
     anim.scene.add(axis[0]);
     anim.scene.add(axis[1]);
     let mesh_array = await anim.addText("\\begin{matrix}1 0 & x & x^2 \\\\1 & y & y^2 \\\\1 & xy & z^2 \\end{matrix}\\", '#ffffff', 8, 3, 2);
+
+
+
 
     anim.addAnimation(showArrow(anim, arrow, Math.sqrt(2)));
     anim.addAnimation(checkpoint());

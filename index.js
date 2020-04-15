@@ -639,6 +639,19 @@ export class Animation {
         return ret;
     };
 
+    create3DAlignedText = (textInput, color, size, x, y, z, style = 'regular') => {
+        let sprite = new THREE.TextSprite({
+          fillStyle: color,
+          fontFamily: '"Times New Roman", Times, serif',
+          fontSize: size,
+          fontStyle: style,
+          text: textInput.join('\n'),
+        });
+        sprite.position.set(x, y, z);
+        this.scene.add(sprite);
+        return sprite;
+    }
+
     addAnimation = (animation) => {
         this.animations.push(animation);
         this.hasPlayed.push(false);

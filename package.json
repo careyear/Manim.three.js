@@ -9,8 +9,10 @@
   "author": "CareYear",
   "license": "ISC",
   "dependencies": {
+    "@types/three": "^0.103.2",
     "ccapture.js": "^1.1.0",
     "three": "^0.111.0",
-    "three-bmfont-text": "^2.3.0"
+    "three-bmfont-text": "^2.3.0",
+    "three-text2d": "^0.6.0"
   }
 }
