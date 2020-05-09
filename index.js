@@ -3,20 +3,15 @@ import {
     BoxBufferGeometry,
     BufferAttribute,
     BufferGeometry,
-    CircleGeometry,
     Color,
     DirectionalLight,
     DoubleSide,
-    FontLoader,
     Geometry,
-    GridHelper,
     HemisphereLight,
     Line,
     LineBasicMaterial,
     LineDashedMaterial,
-    LoadingManager,
     Mesh,
-    ShapeBufferGeometry,
     MeshBasicMaterial,
     MeshStandardMaterial,
     PerspectiveCamera,
@@ -25,7 +20,6 @@ import {
     ShapeGeometry,
     SphereGeometry,
     sRGBEncoding,
-    TextGeometry,
     TextureLoader,
     Vector3,
     WebGLRenderer,
@@ -33,7 +27,6 @@ import {
 } from './node_modules/three/src/Three.js';
 import {OrbitControls} from './node_modules/three/examples/jsm/controls/OrbitControls.js';
 import {SVGLoader} from "./SVGLoader.js";
-import {draw} from "./animations.js";
 
 const promisifyLoader = ( loader, onProgress ) => {
     const promiseLoader = async url => new Promise( ( resolve, reject ) => {
@@ -52,6 +45,7 @@ export class Animation {
         this.isPlaying = false;
         this.hasPlayed = [];
         this.animations = []; // Animations are a dictionary = {name, function, terminate_condition, ...letiables}
+        this.sprites = [];
         this.start = 0; // the index from which to start playing animations, for optimized animations
         this.delay = 0;
 
@@ -83,6 +77,8 @@ export class Animation {
         
         });
 
+        // console.log(this.camera);
+
 
         this.renderer.setAnimationLoop(null);
 
@@ -109,7 +105,7 @@ export class Animation {
 
     };
     createControls = () => {
-        new OrbitControls(this.camera, this.renderer.domElement);
+        this.controls = new OrbitControls(this.camera, this.renderer.domElement);
     };
     createLights = () => {
 
@@ -229,6 +225,7 @@ export class Animation {
                 return SVGPromiseLoader.load(url);
             })
             .then((data) => {
+                console.log(data);
                 let paths = data.paths;
 
                 let group = new Group();
@@ -268,6 +265,7 @@ export class Animation {
                         group.add(mesh);
                     }
                 }
+                this.sprites.push(group);
                 this.scene.add(group);
                 return group.children;
             });
@@ -319,7 +317,6 @@ export class Animation {
                     linewidth: 5,
                 })));
 
-            // console.log(lineDistances[numPoints - 1]);
             axis.push(new Line(geometry_y, new LineDashedMaterial(
                 {
                     color: 0xffffff,
@@ -405,7 +402,6 @@ export class Animation {
                 if (i > 0)
                     lineDistances[i] = lineDistances[i - 1] + points_t[i - 1].distanceTo(points_t[i]);
             }
-            // console.log(lineDistances[numPoints - 1]);
             return new Line(geometry, new LineDashedMaterial(
                 {
                     color: 0x4444ff,
@@ -644,6 +640,9 @@ export class Animation {
         this.hasPlayed.push(false);
     };
     update = () => {
+        for(let i = 0; i < this.sprites.length; i++)
+            this.sprites[i].lookAt(this.camera.position);
+
         let played = false;
         for (let i = this.start; i < this.animations.length; i++) {
             let currentAnimation = this.animations[i];
@@ -672,8 +671,8 @@ export class Animation {
                 }
             }
         }
-        if(!played)
-            this.stop();
+        // if(!played)
+        //     this.stop();
     };
     render = () => {
         this.renderer.render(this.scene, this.camera);
