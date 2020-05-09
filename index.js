@@ -640,8 +640,10 @@ export class Animation {
         this.hasPlayed.push(false);
     };
     update = () => {
-        for(let i = 0; i < this.sprites.length; i++)
+        for(let i = 0; i < this.sprites.length; i++) {
             this.sprites[i].lookAt(this.camera.position);
+            this.sprites[i].setRotationFromQuaternion(this.camera.quaternion, 0);
+        }
 
         let played = false;
         for (let i = this.start; i < this.animations.length; i++) {
