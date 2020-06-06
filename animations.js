@@ -10,7 +10,11 @@ export let draw = (shape, size) => {
         fraction: 0,
         animate: () => {
             ret.fraction += 0.01;
-            shape.material.dashSize = ret.fraction * size;
+            if(shape.children) {
+                shape.children.forEach(obj => obj.material.dashSize = ret.fraction * size);
+            }
+            else
+                shape.material.dashSize = ret.fraction * size;
         },
         reset: () => {
             ret.fraction = 0;
@@ -28,7 +32,11 @@ export let undraw = (shape, size) => {
             if(ret.fraction === 1)
                 ret.shape = ret.shape.shape.past || ret.shape.shape;
             ret.fraction -= 0.03;
-            ret.shape.material.dashSize = ret.fraction * size;
+            if(shape.shape.children) {
+                shape.shape.children.forEach(obj => obj.material.dashSize = ret.fraction * size);
+            }
+            else
+                ret.shape.material.dashSize = Math.max(0, ret.fraction * size);
         },
         reset: () => {
             ret.fraction = 1;
@@ -211,6 +219,69 @@ export let removeArrow = (anim, arrow, length) => {
             ret.fraction = 0;
         },
         terminateCond: () => (ret.fraction <= 0)
+    };
+    return ret;
+};
+let easeInOut = t => t<.5 ? 2*t*t : -1+(4-2*t)*t;
+export let move = (anim, object, x, y, z=0) => {
+    let ret = {
+        name: "move object",
+        fraction: 0,
+        init_x: object.position.x,
+        init_y: object.position.y,
+        init_z: object.position.z,
+        animate: () => {
+            ret.fraction += 0.02;
+            let mul = easeInOut(ret.fraction);
+            object.position.set(ret.init_x + x * mul,
+                ret.init_y + y * mul,
+                ret.init_z + z * mul,
+                );
+        },
+        reset: () => {
+            ret.fraction = 0;
+        },
+        terminateCond: () => (ret.fraction >= 1)
+    };
+    return ret;
+};
+export let fadeOut = (anim, object) => {
+    let ret = {
+        name: "fade out",
+        fraction: 1,
+        animate: () => {
+            ret.fraction -= 0.02;
+            if(object.children)
+                object.children.forEach(obj => {obj.material.transparent = true; obj.material.opacity = Math.max(0, ret.fraction)});
+            else {
+                object.material.transparent = true;
+                object.material.opacity = Math.max(0, ret.fraction);
+            }
+        },
+        reset: () => {
+            ret.fraction = 0;
+        },
+        terminateCond: () => (ret.fraction <= 0)
+    };
+    return ret;
+};
+export let fadeIn = (anim, object) => {
+    let ret = {
+        name: "fade out",
+        fraction: 0,
+        animate: () => {
+            ret.fraction += 0.02;
+            if(object.children)
+                object.children.forEach(obj => {obj.material.transparent = true; obj.material.opacity = Math.min(1, ret.fraction)});
+            else {
+                object.material.transparent = true;
+                object.material.opacity = Math.min(1, ret.fraction);
+            }
+        },
+        reset: () => {
+            ret.fraction = 1;
+        },
+        terminateCond: () => (ret.fraction >= 1)
     };
     return ret;
 };

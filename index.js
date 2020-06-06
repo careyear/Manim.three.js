@@ -7,6 +7,7 @@ import {
     DirectionalLight,
     DoubleSide,
     Geometry,
+    Group,
     HemisphereLight,
     Line,
     LineBasicMaterial,
@@ -22,13 +23,14 @@ import {
     sRGBEncoding,
     TextureLoader,
     Vector3,
-    WebGLRenderer,
-    Group
+    WebGLRenderer
 } from './node_modules/three/src/Three.js';
 import {OrbitControls} from './node_modules/three/examples/jsm/controls/OrbitControls.js';
 import {SVGLoader} from "./SVGLoader.js";
 
-const promisifyLoader = ( loader, onProgress ) => {
+export const Mathjax = MathJax;
+
+export const promisifyLoader = ( loader, onProgress ) => {
     const promiseLoader = async url => new Promise( ( resolve, reject ) => {
         loader.load(url, resolve, onProgress, reject);
     });
@@ -41,19 +43,21 @@ const promisifyLoader = ( loader, onProgress ) => {
 export class Animation {
 // let canvasX = ?widthOfCanvas?, canvasY = ?heightOfCanvas?;
 
-    constructor(controls = true) {
+    constructor(controls = true, documentId = 'scene-container') {
         this.isPlaying = false;
         this.hasPlayed = [];
         this.animations = []; // Animations are a dictionary = {name, function, terminate_condition, ...letiables}
         this.sprites = [];
         this.start = 0; // the index from which to start playing animations, for optimized animations
         this.delay = 0;
+        this.trackables = {};
+        this.hooks = [];
 
         /* This way of animating is not provably optimal but works well with small number
         * of animations. We will think of better ways after this crude implementation works
         * as planned.
         */
-        this.container = document.getElementById('scene-container');
+        this.container = document.getElementById(documentId);
 
         this.scene = new Scene();
         this.scene.background = new Color(0x000000);
@@ -181,14 +185,11 @@ export class Animation {
             let line = new Line(geometry, new LineDashedMaterial({color: color, dashSize: 0, gapSize: 1e10}));
             line.position.set(x, y, z);
             line.rotation.set(rx, ry, rz);
-            this.scene.add(line);
             return line;
         } else {
             let points = shape.getPoints();
             let geometry = new BufferGeometry().setFromPoints(points);
-            let line = new Line(geometry, new LineBasicMaterial({color: color}));
-            this.scene.add(line);
-            return line;
+            return new Line(geometry, new LineBasicMaterial({color: color}));
         }
     };
     fill = (line, color, opacity, x = 0, y = 0, z = 0) => {
@@ -225,7 +226,6 @@ export class Animation {
                 return SVGPromiseLoader.load(url);
             })
             .then((data) => {
-                console.log(data);
                 let paths = data.paths;
 
                 let group = new Group();
@@ -267,16 +267,17 @@ export class Animation {
                 }
                 this.sprites.push(group);
                 this.scene.add(group);
-                return group.children;
+                return group;
             });
     };
     createPlotGrid = (topLeftX, topLeftY, bottomRightX, bottomRightY, animate = true) => {
         if (animate) {
+            let height = Math.abs(topLeftY - bottomRightY), width = Math.abs(topLeftX - bottomRightX);
             let axis = [];
             let geometry_y = new BufferGeometry();
             let points_y = [];
-            for (let y = bottomRightY; y <= topLeftY; y += 0.2)
-                points_y.push(new Vector3((topLeftX + bottomRightX) / 2, y, 0));
+            for (let y = -height * 0.5; y <= height * 0.5; y += 0.2)
+                points_y.push(new Vector3(0, y, 0));
             let y_points = new Float32Array(points_y.length * 3);
             let y_numPoints = points_y.length;
             let y_lineDistances = new Float32Array(y_numPoints);
@@ -293,8 +294,8 @@ export class Animation {
 
             let geometry_x = new BufferGeometry();
             let points_x = [];
-            for (let x = topLeftX; x <= bottomRightX; x += 0.2)
-                points_x.push(new Vector3(x, (topLeftY + bottomRightY) / 2, 0));
+            for (let x = -width * 0.5; x <= width * 0.5; x += 0.2)
+                points_x.push(new Vector3(x, 0, 0));
             let x_points = new Float32Array(points_x.length * 3);
             let x_numPoints = points_x.length;
             let x_lineDistances = new Float32Array(x_numPoints);
@@ -324,7 +325,12 @@ export class Animation {
                     gapSize: 1e10,
                     linewidth: 5,
                 })));
-            return axis;
+            let group = new Group();
+            group.add(axis[0]);
+            group.add(axis[1]);
+            group.position.set((topLeftX - bottomRightX) * 0.5 , (topLeftY - bottomRightY) * 0.5, 0);
+            this.scene.add(group);
+            return group;
         } else {
             let geometry_y = new BufferGeometry();
             geometry_y.setAttribute('position', new BufferAttribute(new Float32Array([
@@ -639,6 +645,25 @@ export class Animation {
         this.animations.push(animation);
         this.hasPlayed.push(false);
     };
+
+    addTrackable = (name, value, trigger, end) => {
+        if(this.trackables.name)
+            return 1;
+        this.trackables[name] = {value, trigger, end};
+        return 0;
+    };
+
+    updateTrackable = (name, value) => {
+        if(!this.trackables.name)
+            return 1;
+        this.trackables[name].value = value;
+        return 0;
+    };
+
+    addHook = (condition, callback) => {
+        this.hooks.push({condition, callback});
+    };
+
     update = () => {
         for(let i = 0; i < this.sprites.length; i++) {
             this.sprites[i].lookAt(this.camera.position);
