@@ -8,6 +8,7 @@ import {
     DoubleSide,
     Geometry,
     HemisphereLight,
+	Line as LineThree,
     LineBasicMaterial,
     LineDashedMaterial,
     Mesh,
@@ -34,6 +35,7 @@ class Mobject {
 	}
 	construct = () => {};
 	static easeInOut = t => t<.5 ? 2*t*t : -1+(4-2*t)*t;
+	static easeInOutQuint = t => t<.5 ? 16*t*t*t*t*t : 1+16*(--t)*t*t*t*t;
 	draw = size => {
 		let ret = {
 			name: "draw",
@@ -41,10 +43,10 @@ class Mobject {
 			animate: () => {
 				ret.fraction += 0.01;
 				if(this.object.children && this.object.children.length > 0) {
-					this.object.children.forEach(obj => obj.material.dashSize = ret.fraction * size);
+					this.object.children.forEach(obj => obj.material.dashSize = Mobject.easeInOutQuint(ret.fraction) * size);
 				}
 				else
-					this.object.material.dashSize = ret.fraction * size;
+					this.object.material.dashSize = Mobject.easeInOutQuint(ret.fraction) * size;
 			},
 			reset: () => {
 				ret.fraction = 0;
@@ -53,16 +55,16 @@ class Mobject {
 		};
 		this.anim.addAnimation(ret);
 	};
-	undraw = () => size => {
+	undraw = size => {
 		let ret = {
 			name: "undraw",
 			fraction: 1,
 			animate: () => {
 				ret.fraction -= 0.03;
 				if(this.object.children) {
-					this.object.children.forEach(obj => obj.material.dashSize = ret.fraction * size);
+					this.object.children.forEach(obj => obj.material.dashSize = Mobject.easeInOutQuint(ret.fraction) * size);
 				}
-				else this.object.material.dashSize = Math.max(0, ret.fraction * size);
+				else this.object.material.dashSize = Math.max(0, Mobject.easeInOutQuint(ret.fraction) * size);
 			},
 			reset: () => {
 				ret.fraction = 1;
@@ -204,7 +206,19 @@ class Mobject {
 }
 
 export class Line extends Mobject {
-
+	construct = (x1, y1, z1, x2, y2, z2, color, animate=true) => {
+        let geometry = new BufferGeometry();
+        geometry.setAttribute('position', new BufferAttribute(new Float32Array([
+            x2, y2, z2,
+            x1, y1, z1
+        ]), 3));
+        geometry.setAttribute('lineDistance',
+            new BufferAttribute(new Float32Array([new Vector3(x2, y2, z2).distanceTo(new Vector3(x1, y1, z1))]),
+                1));
+        let line = new LineThree(geometry, new LineDashedMaterial({color, dashSize: animate ? 0 : 5, gapSize: 1e10}));
+        this.object = line;
+        this.anim.scene.add(line);
+    }
 }
 
 export class Text extends Mobject {
@@ -318,6 +332,21 @@ export class Arrow extends Mobject {
 				ret.fraction = 0;
 			},
 			terminateCond: () => (ret.fraction >= 1)
+		};
+		this.anim.addAnimation(ret);
+	};
+	undraw = () => {
+		let ret = {
+			name: "arrow animation",
+			fraction: 1,
+			animate: () => {
+				ret.fraction -= 0.02;
+				this.object.setLength(this.length * Arrow.easeInOut(ret.fraction), Math.min(0.2 * this.length * Arrow.easeInOut(ret.fraction), 0.2), 0.5 * Math.min(0.2 * this.length * Arrow.easeInOut(ret.fraction), 0.2));
+			},
+			reset: () => {
+				ret.fraction = 0;
+			},
+			terminateCond: () => (ret.fraction <= 0)
 		};
 		this.anim.addAnimation(ret);
 	};
