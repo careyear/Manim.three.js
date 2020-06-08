@@ -1,32 +1,27 @@
 import {
     ArrowHelper,
-    BoxBufferGeometry,
     BufferAttribute,
     BufferGeometry,
-    Color,
-    DirectionalLight,
     DoubleSide,
-    Geometry,
-    HemisphereLight,
 	Line as LineThree,
-    LineBasicMaterial,
     LineDashedMaterial,
     Mesh,
     MeshBasicMaterial,
-    MeshStandardMaterial,
-    PerspectiveCamera,
-    Scene,
     Shape,
     ShapeGeometry,
-    SphereGeometry,
-    sRGBEncoding,
-    TextureLoader,
     Vector3,
-    WebGLRenderer,
     Group
 } from './node_modules/three/src/Three.js';
 import {SVGLoader} from "./SVGLoader.js";
 import {Mathjax, promisifyLoader} from "./index.js";
+
+export const constants = {
+	ORIGIN: {
+		x: 0,
+		y: 0,
+		z: 0
+	}
+};
 
 class Mobject {
 	constructor(anim) {
@@ -73,11 +68,8 @@ class Mobject {
 		};
 		this.anim.addAnimation(ret);
 	};
-
 	checkpoint = () => this.anim.addAnimation({name: "checkpoint"});
-
 	delay = () => this.anim.addAnimation({name: "delay"});
-
 	fadeIn = () => {
 		let ret = {
 			name: "fade in",
@@ -118,7 +110,7 @@ class Mobject {
 		};
 		this.anim.addAnimation(ret);
 	};
-	moveBy = (x, y, z=0) => {
+	moveBy = ({x, y, z=0}) => {
 		let ret = {
 			name: "move object",
 			fraction: 0,
@@ -131,6 +123,29 @@ class Mobject {
 				this.object.position.set(ret.init_x + x * mul,
 					ret.init_y + y * mul,
 					ret.init_z + z * mul,
+					);
+			},
+			reset: () => {
+				ret.fraction = 0;
+			},
+			terminateCond: () => (ret.fraction >= 1)
+		};
+		this.position = {x: this.position.x + x, y: this.position.y + y, z: this.position.z + z};
+		this.anim.addAnimation(ret);
+	};
+	moveTo = ({x, y, z=0}) => {
+		let ret = {
+			name: "move object",
+			fraction: 0,
+			init_x: this.position.x,
+			init_y: this.position.y,
+			init_z: this.position.z,
+			animate: () => {
+				ret.fraction += 0.02;
+				let mul = Mobject.easeInOut(ret.fraction);
+				this.object.position.set(ret.init_x + (x - ret.init_x) * mul,
+					ret.init_y + (y - ret.init_y) * mul,
+					ret.init_z + (z - ret.init_z) * mul,
 					);
 			},
 			reset: () => {
@@ -191,22 +206,41 @@ class Mobject {
 		};
 		this.anim.addAnimation(ret);
 	};
-	up = () => ({
-
+	up = (mul = 1) => ({
+		x: this.position.x,
+		y: this.position.y + mul,
+		z: this.position.z
 	});
-	down = () => ({
-
+	down = (mul = 1) => ({
+		x: this.position.x,
+		y: this.position.y - mul,
+		z: this.position.z
 	});
-	left = () => ({
-
+	left = (mul = 1) => ({
+		x: this.position.x - mul,
+		y: this.position.y,
+		z: this.position.z
 	});
-	right = () => ({
-
-	})
+	right = (mul = 1) => ({
+		x: this.position.x + mul,
+		y: this.position.y,
+		z: this.position.z
+	});
+	front = (mul = 1) => ({
+		x: this.position.x,
+		y: this.position.y,
+		z: this.position.z + mul
+	});
+	back = (mul = 1) => ({
+		x: this.position.x,
+		y: this.position.y,
+		z: this.position.z - mul
+	});
 }
 
 export class Line extends Mobject {
-	construct = (x1, y1, z1, x2, y2, z2, color, animate=true) => {
+	construct = ({x: x1, y: y1, z: z1 = 0}, {x: x2, y: y2, z: z2 = 0}, color, animate=true) => {
+		console.log(x1, y1, z1, x2, y2, z2);
         let geometry = new BufferGeometry();
         geometry.setAttribute('position', new BufferAttribute(new Float32Array([
             x2, y2, z2,
@@ -218,11 +252,23 @@ export class Line extends Mobject {
         let line = new LineThree(geometry, new LineDashedMaterial({color, dashSize: animate ? 0 : 5, gapSize: 1e10}));
         this.object = line;
         this.anim.scene.add(line);
+        this.position = {
+        	x: x1,
+			y: y1,
+			z: z1
+		};
+        this.head = {
+        	position: {
+        		x: x2,
+				y: y2,
+				z: z2
+			}
+		};
     }
 }
 
 export class Text extends Mobject {
-	construct = (content, color, textSize, x = 0, y = 0, z = 0, animate = true) => {
+	construct = (content, color, textSize, {x, y, z = 0}, animate = true) => {
 		Mathjax.texReset();
         return Mathjax.tex2svgPromise(content)
             .then(node => {
@@ -307,7 +353,7 @@ export class Text extends Mobject {
 }
 
 export class Arrow extends Mobject {
-	construct = (x1, y1, z1, x2, y2, z2, color, animate = true) => {
+	construct = ({x: x1, y: y1, z: z1 = 0}, {x: x2, y: y2, z: z2 = 0}, color, animate = true) => {
         let dir = new Vector3(x2 - x1, y2 - y1, z2 - z1);
         // makes it a unit vector
         dir.normalize();
@@ -319,6 +365,18 @@ export class Arrow extends Mobject {
         this.object = new ArrowHelper(dir, origin, animate ? 0.001 : length, color);
 		this.length = length;
         this.anim.scene.add(this.object);
+        this.position = {
+        	x: x1,
+			y: y1,
+			z: z1
+		};
+        this.head = {
+        	position: {
+        		x: x2,
+				y: y2,
+				z: z2
+			}
+		};
 	};
 	draw = () => {
     	let ret = {
@@ -357,7 +415,7 @@ export class Graph2D extends Mobject {
 }
 
 export class Circle extends Mobject {
-	construct = (radius, x, y, numberOfSegments = 1000, animate = true) => {
+	construct = (radius, {x, y, z=0}, numberOfSegments = 1000, animate = true) => {
         let shape = new Shape().moveTo(radius, 0);
         for (let i = 1; i <= numberOfSegments; i++) {
             let theta = (i / numberOfSegments) * Math.PI * 2;
@@ -385,7 +443,7 @@ export class Circle extends Mobject {
 }
 
 export class Point extends Circle {
-	construct = (x, y, color, animate = true) => {
+	construct = ({x, y, z=0}, color, animate = true) => {
 		let shape = new Shape().moveTo(0.08, 0);
         for (let i = 1; i <= 1000; i++) {
             let theta = (i / 1000) * Math.PI * 2;

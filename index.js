@@ -41,7 +41,6 @@ export const promisifyLoader = ( loader, onProgress ) => {
 };
 
 export class Animation {
-// let canvasX = ?widthOfCanvas?, canvasY = ?heightOfCanvas?;
 
     constructor(controls = true, documentId = 'scene-container') {
         this.isPlaying = false;
@@ -57,6 +56,7 @@ export class Animation {
         * of animations. We will think of better ways after this crude implementation works
         * as planned.
         */
+
         this.container = document.getElementById(documentId);
 
         this.scene = new Scene();
@@ -80,9 +80,6 @@ export class Animation {
             this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
         
         });
-
-        // console.log(this.camera);
-
 
         this.renderer.setAnimationLoop(null);
 
