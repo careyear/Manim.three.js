@@ -10,7 +10,9 @@ import {
     Shape,
     ShapeGeometry,
     Vector3,
-    Group
+    Group,
+	Geometry,
+	LineBasicMaterial
 } from './node_modules/three/src/Three.js';
 import {SVGLoader} from "./SVGLoader.js";
 import {Mathjax, promisifyLoader} from "./index.js";
@@ -23,10 +25,21 @@ export const constants = {
 	}
 };
 
+let f = (obj, callback) => {
+	if(obj.children && obj.children.length > 0)
+		obj.children.forEach(objC => f(objC, callback));
+	else callback(obj);
+};
+
 class Mobject {
 	constructor(anim) {
 		this.anim = anim;
 		this.object = null;
+		this.scaleVector = {
+			x: 1,
+			y: 1,
+			z: 1
+		};
 	}
 	construct = () => {};
 	static easeInOut = t => t<.5 ? 2*t*t : -1+(4-2*t)*t;
@@ -37,11 +50,7 @@ class Mobject {
 			fraction: 0,
 			animate: () => {
 				ret.fraction += 0.01;
-				if(this.object.children && this.object.children.length > 0) {
-					this.object.children.forEach(obj => obj.material.dashSize = Mobject.easeInOutQuint(ret.fraction) * size);
-				}
-				else
-					this.object.material.dashSize = Mobject.easeInOutQuint(ret.fraction) * size;
+				f(this.object, obj => obj.material.dashSize = Mobject.easeInOutQuint(ret.fraction) * size);
 			},
 			reset: () => {
 				ret.fraction = 0;
@@ -56,10 +65,7 @@ class Mobject {
 			fraction: 1,
 			animate: () => {
 				ret.fraction -= 0.03;
-				if(this.object.children) {
-					this.object.children.forEach(obj => obj.material.dashSize = Mobject.easeInOutQuint(ret.fraction) * size);
-				}
-				else this.object.material.dashSize = Math.max(0, Mobject.easeInOutQuint(ret.fraction) * size);
+				f(this.object, obj => obj.material.dashSize = Mobject.easeInOutQuint(ret.fraction) * size);
 			},
 			reset: () => {
 				ret.fraction = 1;
@@ -240,28 +246,27 @@ class Mobject {
 
 export class Line extends Mobject {
 	construct = ({x: x1, y: y1, z: z1 = 0}, {x: x2, y: y2, z: z2 = 0}, color, animate=true) => {
-		console.log(x1, y1, z1, x2, y2, z2);
         let geometry = new BufferGeometry();
         geometry.setAttribute('position', new BufferAttribute(new Float32Array([
-            x2, y2, z2,
-            x1, y1, z1
+            x2 * 2, y2 * 2, z2 * 2,
+            x1 * 2, y1 * 2, z1 * 2
         ]), 3));
         geometry.setAttribute('lineDistance',
-            new BufferAttribute(new Float32Array([new Vector3(x2, y2, z2).distanceTo(new Vector3(x1, y1, z1))]),
+            new BufferAttribute(new Float32Array([new Vector3(x2 * 2, y2 * 2, z2 * 2).distanceTo(new Vector3(x1 * 2, y1 * 2, z1 * 2))]),
                 1));
         let line = new LineThree(geometry, new LineDashedMaterial({color, dashSize: animate ? 0 : 5, gapSize: 1e10}));
         this.object = line;
         this.anim.scene.add(line);
         this.position = {
-        	x: x1,
-			y: y1,
-			z: z1
+        	x: x1 * 2,
+			y: y1 * 2,
+			z: z1 * 2
 		};
         this.head = {
         	position: {
-        		x: x2,
-				y: y2,
-				z: z2
+        		x: x2 * 2,
+				y: y2 * 2,
+				z: z2 * 2
 			}
 		};
     }
@@ -342,11 +347,6 @@ export class Text extends Mobject {
                 	y: this.object.position.y,
                 	z: this.object.position.z,
 				};
-				this.scaleVector = {
-                	x: this.object.scale.x,
-                	y: this.object.scale.y,
-                	z: this.object.scale.z,
-				};
             });
 	};
 	write = this.draw;
@@ -414,6 +414,120 @@ export class Graph2D extends Mobject {
 
 }
 
+export class GraphTheory extends Mobject {
+	construct = async (graph, directed = false, radius = 0.25, animate = true) => {
+        this.object = new Group();
+        this.edges = [];
+        for(let i = 0; i < graph.nodes.length; i++) {
+            let node = graph.nodes[i];
+            let circle = new Circle(this.anim);
+            circle.construct(radius, node, 50, animate);
+            this.object.add(circle.object);
+        }
+        for(let i = 0; i < graph.edges.length; i++) {
+            let edge = graph.edges[i];
+            if(directed) {
+            	let arrow = new Arrow(this.anim);
+            	arrow.construct(graph.nodes[edge[0]], graph.nodes[edge[1]], 0xffffff, true);
+				this.object.add(arrow.object);
+			} else {
+            	let line = new Line(this.anim);
+            	this.edges.push({from: edge[0], to: edge[1], line});
+            	let x = graph.nodes[edge[0]].x - graph.nodes[edge[1]].x, y = graph.nodes[edge[0]].y - graph.nodes[edge[1]].y;
+            	let length = Math.sqrt(x * x + y * y);
+            	let ratio = radius / length;
+            	line.construct({x: graph.nodes[edge[0]].x - ratio * x / 2, y: graph.nodes[edge[0]].y - ratio * y / 2},
+					{x: graph.nodes[edge[1]].x + ratio * x / 2, y: graph.nodes[edge[1]].y + ratio * y / 2}, 0xffffff, true);
+                this.object.add(line.object);
+        	}
+        }
+        for(let i = 0; i < graph.nodes.length; i++) {
+            let {label = (i + 1).toString(10), color = "#ffffff"} = graph.nodes[i];
+            let text = new Text(this.anim);
+            await text.construct(label, color, 8, {x: 2 * (graph.nodes[i].x - radius) + 0.95, y: 2 * (graph.nodes[i].y - radius) + 1, z: 0.02});
+            this.object.add(text.object);
+        }
+        this.anim.scene.add(this.object);
+        this.position = {
+        	x: this.object.position.x,
+			y: this.object.position.y,
+		};
+        this.graph = graph;
+        this.radius = radius;
+        this.directed = directed;
+    };
+	draw = () => {
+		for(let i = 0;i < this.object.children.length; i++) {
+			let obj = this.object.children[i];
+			let size = 0;
+			if(i < this.graph.nodes.length + this.graph.edges.length)
+				size = this.radius * 12;
+			else
+				size = 300000;
+			let ret = {
+				name: "draw",
+				fraction: 0,
+				animate: () => {
+					ret.fraction += 0.01;
+					f(obj, obj => obj.material.dashSize = Mobject.easeInOutQuint(ret.fraction) * size);
+				},
+				reset: () => {
+					ret.fraction = 0;
+				},
+				terminateCond: () => (ret.fraction >= 1)
+			};
+			this.anim.addAnimation(ret);
+		}
+	};
+	undraw = () => {
+		for(let i = 0;i < this.object.children.length; i++) {
+			let obj = this.object.children[i];
+			let size = 0;
+			if(i < this.graph.nodes.length + this.graph.edges.length)
+				size = this.radius * 12;
+			else
+				size = 300000;
+			let ret = {
+				name: "draw",
+				fraction: 1,
+				animate: () => {
+					ret.fraction -= 0.01;
+					f(obj, obj => obj.material.dashSize = Mobject.easeInOutQuint(ret.fraction) * size);
+				},
+				reset: () => {
+					ret.fraction = 0;
+				},
+				terminateCond: () => (ret.fraction < 0)
+			};
+			this.anim.addAnimation(ret);
+		}
+	};
+	addEdge = (from, to, color = "#ffffff") => {
+		if(this.directed) {
+
+		} else {
+			let line = new Line(this.anim);
+			let x = this.graph.nodes[from].x - this.graph.nodes[to].x, y = this.graph.nodes[from].y - this.graph.nodes[to].y;
+			let length = Math.sqrt(x * x + y * y);
+			let ratio = this.radius / length;
+			line.construct({x: this.graph.nodes[from].x - ratio * x / 2, y: this.graph.nodes[from].y - ratio * y / 2},
+				{x: this.graph.nodes[to].x + ratio * x / 2, y: this.graph.nodes[to].y + ratio * y / 2}, color, true);
+			this.object.add(line.object);
+			line.draw(12);
+			this.edges.push({from, to, line});
+		}
+	};
+	removeEdge = (from, to) => {
+		for(let i = 0;i < this.edges.length; i++)
+			if(this.edges[i].from === from && this.edges[i].to === to)
+			{
+				this.edges[i].line.undraw(12);
+				this.edges.splice(i, 1);
+				break;
+			}
+	}
+}
+
 export class Circle extends Mobject {
 	construct = (radius, {x, y, z=0}, numberOfSegments = 1000, animate = true) => {
         let shape = new Shape().moveTo(radius, 0);
@@ -433,11 +547,6 @@ export class Circle extends Mobject {
 			x: this.object.position.x,
 			y: this.object.position.y,
 			z: this.object.position.z,
-		};
-		this.scaleVector = {
-			x: this.object.scale.x,
-			y: this.object.scale.y,
-			z: this.object.scale.z,
 		};
     };
 }
@@ -462,16 +571,31 @@ export class Point extends Circle {
 			y: this.object.position.y,
 			z: this.object.position.z,
 		};
-		this.scaleVector = {
-			x: this.object.scale.x,
-			y: this.object.scale.y,
-			z: this.object.scale.z,
-		};
-		// super.construct(0.2, x, y, 1000, animate);
 		this.fill(color, 0, true, 1);
 	}
 }
 
 export class Array extends Mobject {
 
+}
+
+export class Polygon extends Mobject {
+	construct = (arr, color = '#FFFFFF') => {
+        let shape = new Shape().moveTo(0, 0).lineTo(0, 0);
+
+        for (let i = 1; i < arr.length; i++)
+            shape.lineTo(arr[i].x - arr[0].x, arr[i].y - arr[0].y);
+        shape.lineTo(0, 0);
+        for (let i = 1; i < arr.length; i++)
+            shape.lineTo(arr[i].x - arr[0].x, arr[i].y - arr[0].y);
+        shape.autoClose = true;
+
+        this.object = this.anim.createLineShapes(shape, color, true, 0, 0, 0, 0, 0, 0);
+        this.anim.scene.add(this.object);
+        this.position = {
+			x: this.object.position.x,
+			y: this.object.position.y,
+			z: this.object.position.z,
+		};
+    };
 }

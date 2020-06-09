@@ -611,7 +611,7 @@ export class Animation {
 
 // add all the points to the geometry, can also scale them if required
         for (let i = 0; i < l; i++)
-            geometry.vertices.push(new Vector3(arr[i][0], arr[i][1], arr[i][2]));
+            geometry.vertices.push(new Vector3(arr[i].x - arr[0].x, arr[i].y - arr[0].y, arr[i].z - arr[0].z));
 
         this.scene.add(new Line(geometry, material));
 
