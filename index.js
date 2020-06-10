@@ -59,6 +59,8 @@ export class Animation {
 
         this.container = document.getElementById(documentId);
 
+        this.container.addEventListener("click", () => this.isPlaying ? this.pause() : this.play(false));
+
         this.scene = new Scene();
         this.scene.background = new Color(0x000000);
 
@@ -669,10 +671,15 @@ export class Animation {
 
         let played = false;
         for (let i = this.start; i < this.animations.length; i++) {
+            if(this.animations[i].name === "checkpoint" && i !== 0 && this.animations[i-1].name !== "checkpoint" && !played) {
+                this.seekbar.setAttribute('value', (parseInt(this.seekbar.getAttribute('value')) + 1).toString());
+                this.seekbar.value = this.seekbar.getAttribute('value');
+            }
             let currentAnimation = this.animations[i];
             if (currentAnimation.name === "checkpoint") {
-                if (!played)
+                if (!played) {
                     this.start = i + 1;
+                }
                 return;
             }
             else if (currentAnimation.name === "delay") {
@@ -703,9 +710,64 @@ export class Animation {
         if(this.capturer)
             this.capturer.capture(this.renderer.domElement);
     };
-    play = () => {
+    countCheckpoints = () => {
+        let ret = 0;
+        for(let i = 1;i<this.animations.length; i++) {
+            if(this.animations[i].name === "checkpoint" && this.animations[i-1].name !== "checkpoint")
+                ret++;
+        }
+        return ret.toString();
+    };
+    seek = value => {
+        for(let i = 0, cur = 0;i < this.animations.length; i++) {
+            if(this.animations[i].name === "checkpoint" && i !== 0 && this.animations[i-1].name !== "checkpoint") {
+                cur++;
+                if(cur === value)
+                    this.start = i;
+            }
+            else if(this.animations[i].name === "checkpoint"){}
+            else if(cur < value) {
+                this.animations[i].fraction = 1;
+                this.animations[i].animate();
+                this.hasPlayed[i] = true;
+            }
+            else {
+                this.animations[i].fraction = 0;
+                this.animations[i].animate();
+                this.hasPlayed[i] = false;
+            }
+        }
+        if(this.isPlaying)
+            this.play();
+        else this.pause();
+    };
+    pause = () => {
+        if(!this.isPlaying)
+            return;
+
+        this.isPlaying = false;
+        this.renderer.setAnimationLoop(null);
+    };
+    play = (initial=true) => {
         if (this.isPlaying)
             return;
+        if(initial) {
+            this.seekbar = document.createElement('input');
+            this.seekbar.setAttribute('type', 'range');
+            this.seekbar.setAttribute('min', '0');
+            this.seekbar.setAttribute('max', this.countCheckpoints());
+            this.seekbar.setAttribute('value', '0');
+            this.seekbar.setAttribute('step', '1');
+            this.seekbar.style.width = "100%";
+            this.seekbar.style.zIndex = "10";
+            this.seekbar.style.position = "relative";
+            this.seekbar.style.height = "50px";
+            this.seekbar.style.top = this.container.clientHeight - 50 + "px";
+            this.container.appendChild(this.seekbar);
+
+            this.seekbar.addEventListener("input", e => {this.seek(parseInt(e.target.value)); this.seekbar.setAttribute('value', e.target.value);});
+            window.addEventListener("resize", () => this.seekbar.style.top = this.container.clientHeight - 50 + "px");
+        }
         this.isPlaying = true;
         this.renderer.setAnimationLoop(() => {
             this.update();

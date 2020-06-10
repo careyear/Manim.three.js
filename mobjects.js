@@ -31,6 +31,8 @@ let f = (obj, callback) => {
 	else callback(obj);
 };
 
+// TODO: Normalize animation times to 1s between checkpoints
+
 class Mobject {
 	constructor(anim) {
 		this.anim = anim;
@@ -49,7 +51,7 @@ class Mobject {
 			name: "draw",
 			fraction: 0,
 			animate: () => {
-				ret.fraction += 0.01;
+				ret.fraction += 1.0 / 56;
 				f(this.object, obj => obj.material.dashSize = Mobject.easeInOutQuint(ret.fraction) * size);
 			},
 			reset: () => {
@@ -62,15 +64,15 @@ class Mobject {
 	undraw = size => {
 		let ret = {
 			name: "undraw",
-			fraction: 1,
+			fraction: 0,
 			animate: () => {
-				ret.fraction -= 0.03;
-				f(this.object, obj => obj.material.dashSize = Mobject.easeInOutQuint(ret.fraction) * size);
+				ret.fraction += 1.0 / 60;
+				f(this.object, obj => obj.material.dashSize = Mobject.easeInOutQuint(1 - ret.fraction) * size);
 			},
 			reset: () => {
-				ret.fraction = 1;
+				ret.fraction = 0;
 			},
-			terminateCond: () => (ret.fraction <= 0)
+			terminateCond: () => (ret.fraction >= 1)
 		};
 		this.anim.addAnimation(ret);
 	};
@@ -81,7 +83,7 @@ class Mobject {
 			name: "fade in",
 			fraction: 0,
 			animate: () => {
-				ret.fraction += 0.02;
+				ret.fraction += 1.0 / 60;
 				if(this.object.children)
 					this.object.children.forEach(obj => {obj.material.transparent = true; obj.material.opacity = Math.min(1, ret.fraction)});
 				else {
@@ -99,20 +101,20 @@ class Mobject {
 	fadeOut = () => {
 		let ret = {
 			name: "fade out",
-			fraction: 1,
+			fraction: 0,
 			animate: () => {
-				ret.fraction -= 0.02;
+				ret.fraction += 1.0 / 60;
 				if(this.object.children)
-					this.object.children.forEach(obj => {obj.material.transparent = true; obj.material.opacity = Math.max(0, ret.fraction)});
+					this.object.children.forEach(obj => {obj.material.transparent = true; obj.material.opacity = Math.max(0, 1 - ret.fraction)});
 				else {
 					this.object.material.transparent = true;
-					this.object.material.opacity = Math.max(0, ret.fraction);
+					this.object.material.opacity = Math.max(0, 1 - ret.fraction);
 				}
 			},
 			reset: () => {
 				ret.fraction = 0;
 			},
-			terminateCond: () => (ret.fraction <= 0)
+			terminateCond: () => (ret.fraction >= 1)
 		};
 		this.anim.addAnimation(ret);
 	};
@@ -124,12 +126,13 @@ class Mobject {
 			init_y: this.position.y,
 			init_z: this.position.z,
 			animate: () => {
-				ret.fraction += 0.02;
+				ret.fraction += 1.0 / 58.38;
 				let mul = Mobject.easeInOut(ret.fraction);
-				this.object.position.set(ret.init_x + x * mul,
+				this.object.position.set(
+					ret.init_x + x * mul,
 					ret.init_y + y * mul,
 					ret.init_z + z * mul,
-					);
+				);
 			},
 			reset: () => {
 				ret.fraction = 0;
@@ -162,7 +165,8 @@ class Mobject {
 		this.position = {x: this.position.x + x, y: this.position.y + y, z: this.position.z + z};
 		this.anim.addAnimation(ret);
 	};
-	fill = (color, opacity, animate = false, to = 1, step = 0.02) => {
+	fill = (color, opacity, animate = false, to = 1) => {
+		let step = (to - opacity) / 58.38;
 		let material = new MeshBasicMaterial({color: color, side: DoubleSide, transparent: true, opacity: opacity});
 		let mesh = new Mesh(this.object.children[0].geometry, material);
 		mesh.position.set(this.object.position.x, this.object.position.y, this.object.position.z);
@@ -174,36 +178,26 @@ class Mobject {
 			},
 			reset: () => {
 			},
-			terminateCond: () => (mesh.material.opacity >= to)
+			terminateCond: () => (opacity < to ? mesh.material.opacity >= to : mesh.material.opacity <= to)
 		});
 	};
-	unfill = (step = 0.02) => {
-		this.anim.addAnimation({
-			name: "unfill",
-			animate: () => {
-				this.object.children[1].material.opacity -= step;
-			},
-			reset: () => {
-			},
-			terminateCond: () => (this.object.children[1].material.opacity <= 0)
-		});
-	};
-	scale = (by, step = 0.02) => {
+	scale = by => {
+		let step = 1.0 / 58.3;
 		let ret = {
 			name: "scale",
 			init_x: this.scaleVector.x,
 			init_y: this.scaleVector.y,
 			init_z: this.scaleVector.z,
-			fraction: 1,
+			fraction: 0,
 			mul: by < 1 ? -1 : 1,
 			animate: () => {
-				ret.fraction -= step;
-				this.object.scale.x = ret.init_x * (by + (1 - by) * Mobject.easeInOut(ret.fraction));
-				this.object.scale.y = ret.init_y * (by + (1 - by) * Mobject.easeInOut(ret.fraction));
-				this.object.scale.z = ret.init_z * (by + (1 - by) * Mobject.easeInOut(ret.fraction));
+				ret.fraction += step;
+				this.object.scale.x = ret.init_x * (by + (1 - by) * Mobject.easeInOut(1 - ret.fraction));
+				this.object.scale.y = ret.init_y * (by + (1 - by) * Mobject.easeInOut(1 - ret.fraction));
+				this.object.scale.z = ret.init_z * (by + (1 - by) * Mobject.easeInOut(1 - ret.fraction));
 			},
 			reset: () => {},
-			terminateCond: () => (ret.fraction <= 0)
+			terminateCond: () => (ret.fraction >= 1)
 		};
 		this.scaleVector = {
 			x: this.scaleVector.x * by,
@@ -347,6 +341,11 @@ export class Text extends Mobject {
                 	y: this.object.position.y,
                 	z: this.object.position.z,
 				};
+                this.scaleVector = {
+                	x: this.object.scale.x,
+					y: this.object.scale.y,
+					z: this.object.scale.z,
+				};
             });
 	};
 	write = this.draw;
@@ -451,6 +450,7 @@ export class GraphTheory extends Mobject {
         this.position = {
         	x: this.object.position.x,
 			y: this.object.position.y,
+			z: this.object.position.z
 		};
         this.graph = graph;
         this.radius = radius;
@@ -468,7 +468,7 @@ export class GraphTheory extends Mobject {
 				name: "draw",
 				fraction: 0,
 				animate: () => {
-					ret.fraction += 0.01;
+					ret.fraction += 1.0 / 58;
 					f(obj, obj => obj.material.dashSize = Mobject.easeInOutQuint(ret.fraction) * size);
 				},
 				reset: () => {
