@@ -54,8 +54,9 @@ class Mobject {
 				ret.fraction += 1.0 / 56;
 				f(this.object, obj => obj.material.dashSize = Mobject.easeInOutQuint(ret.fraction) * size);
 			},
-			reset: () => {
-				ret.fraction = 0;
+			set: frac => {
+				ret.fraction = frac;
+				f(this.object, obj => obj.material.dashSize = Mobject.easeInOutQuint(ret.fraction) * size);
 			},
 			terminateCond: () => (ret.fraction >= 1)
 		};
@@ -69,8 +70,9 @@ class Mobject {
 				ret.fraction += 1.0 / 60;
 				f(this.object, obj => obj.material.dashSize = Mobject.easeInOutQuint(1 - ret.fraction) * size);
 			},
-			reset: () => {
-				ret.fraction = 0;
+			set: frac => {
+				ret.fraction = frac;
+				f(this.object, obj => obj.material.dashSize = Mobject.easeInOutQuint(1 - ret.fraction) * size);
 			},
 			terminateCond: () => (ret.fraction >= 1)
 		};
@@ -113,6 +115,12 @@ class Mobject {
 			},
 			reset: () => {
 				ret.fraction = 0;
+				if(this.object.children)
+					this.object.children.forEach(obj => {obj.material.transparent = true; obj.material.opacity = Math.max(0, 1 - ret.fraction)});
+				else {
+					this.object.material.transparent = true;
+					this.object.material.opacity = Math.max(0, 1 - ret.fraction);
+				}
 			},
 			terminateCond: () => (ret.fraction >= 1)
 		};
@@ -134,8 +142,17 @@ class Mobject {
 					ret.init_z + z * mul,
 				);
 			},
-			reset: () => {
-				ret.fraction = 0;
+			set: frac => {
+				ret.fraction = frac;
+				let mul = Mobject.easeInOut(ret.fraction);
+				console.log(ret.init_x + x * mul,
+					ret.init_y + y * mul,
+					ret.init_z + z * mul, mul);
+				this.object.position.set(
+					ret.init_x + x * mul,
+					ret.init_y + y * mul,
+					ret.init_z + z * mul,
+				);
 			},
 			terminateCond: () => (ret.fraction >= 1)
 		};
@@ -157,8 +174,9 @@ class Mobject {
 					ret.init_z + (z - ret.init_z) * mul,
 					);
 			},
-			reset: () => {
-				ret.fraction = 0;
+			set: frac => {
+				ret.fraction = frac;
+				this.object.position.set(ret.init_x, ret.init_y, ret.init_z);
 			},
 			terminateCond: () => (ret.fraction >= 1)
 		};
@@ -196,7 +214,12 @@ class Mobject {
 				this.object.scale.y = ret.init_y * (by + (1 - by) * Mobject.easeInOut(1 - ret.fraction));
 				this.object.scale.z = ret.init_z * (by + (1 - by) * Mobject.easeInOut(1 - ret.fraction));
 			},
-			reset: () => {},
+			set: frac => {
+				ret.fraction = frac;
+				this.object.scale.x = ret.init_x * (by + (1 - by) * Mobject.easeInOut(1 - ret.fraction));
+				this.object.scale.y = ret.init_y * (by + (1 - by) * Mobject.easeInOut(1 - ret.fraction));
+				this.object.scale.z = ret.init_z * (by + (1 - by) * Mobject.easeInOut(1 - ret.fraction));
+			},
 			terminateCond: () => (ret.fraction >= 1)
 		};
 		this.scaleVector = {

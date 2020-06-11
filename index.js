@@ -51,6 +51,7 @@ export class Animation {
         this.delay = 0;
         this.trackables = {};
         this.hooks = [];
+        this.curIndex = 0;
 
         /* This way of animating is not provably optimal but works well with small number
         * of animations. We will think of better ways after this crude implementation works
@@ -58,8 +59,6 @@ export class Animation {
         */
 
         this.container = document.getElementById(documentId);
-
-        this.container.addEventListener("click", () => this.isPlaying ? this.pause() : this.play(false));
 
         this.scene = new Scene();
         this.scene.background = new Color(0x000000);
@@ -93,6 +92,7 @@ export class Animation {
 
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.container.appendChild(this.renderer.domElement);
+        this.renderer.domElement.addEventListener("click", () => this.isPlaying ? this.pause() : this.play(false));
     };
     createCamera = () => {
 
@@ -670,12 +670,23 @@ export class Animation {
         }
 
         let played = false;
+        let fraction = 1;
+        for(let i = this.start; i < this.animations.length; i++)
+        {
+            if(this.animations[i].name === "checkpoint" || this.animations[i].name === "delay")
+                break;
+            fraction = Math.min(fraction, this.animations[i].fraction);
+        }
+        this.seekbar.setAttribute('value', (this.curIndex + fraction).toString());
+        this.seekbar.value = this.seekbar.getAttribute('value');
         for (let i = this.start; i < this.animations.length; i++) {
             if(this.animations[i].name === "checkpoint" && i !== 0 && this.animations[i-1].name !== "checkpoint" && !played) {
-                this.seekbar.setAttribute('value', (parseInt(this.seekbar.getAttribute('value')) + 1).toString());
+                this.seekbar.setAttribute('value', (++this.curIndex).toString());
                 this.seekbar.value = this.seekbar.getAttribute('value');
             }
+
             let currentAnimation = this.animations[i];
+
             if (currentAnimation.name === "checkpoint") {
                 if (!played) {
                     this.start = i + 1;
@@ -695,7 +706,6 @@ export class Animation {
             if (!this.hasPlayed[i]) {
                 if (currentAnimation.terminateCond()) {
                     this.hasPlayed[i] = true;
-                    currentAnimation.reset();
                 } else {
                     played = true;
                     currentAnimation.animate();
@@ -719,27 +729,60 @@ export class Animation {
         return ret.toString();
     };
     seek = value => {
+        if(Math.floor(value) === 0) {
+            this.curIndex = 0;
+            this.start = 0;
+            let frac = true;
+            for(let i = 0;i < this.animations.length; i++) {
+                if(this.animations[i].name === "checkpoint" && i !== 0 && this.animations[i-1].name !== "checkpoint") {
+                    frac = false;
+                }
+                else if(this.animations[i].name === "checkpoint" || this.animations[i].name === "delay") {}
+                else if(frac) {
+                    this.animations[i].set(value);
+                    this.hasPlayed[i] = false;
+                }
+                else {
+                    this.animations[i].set(0);
+                    this.hasPlayed[i] = false;
+                }
+            }
+            for(let i = this.animations.length - 1; i >= 0; i--)
+                if(this.animations[i].name !== "checkpoint" && this.animations[i].name !== "delay")
+                    this.animations[i].set(this.animations[i].fraction);
+            if(this.isPlaying)
+                this.play();
+            else {this.update();this.render();this.pause();}
+            return;
+        }
         for(let i = 0, cur = 0;i < this.animations.length; i++) {
             if(this.animations[i].name === "checkpoint" && i !== 0 && this.animations[i-1].name !== "checkpoint") {
                 cur++;
-                if(cur === value)
-                    this.start = i;
+                if(cur === Math.floor(value)) {
+                    this.curIndex = cur;
+                    this.start = i + 1;
+                }
             }
-            else if(this.animations[i].name === "checkpoint"){}
+            else if(this.animations[i].name === "checkpoint" || this.animations[i].name === "delay"){}
+            else if(cur <= value && value < cur + 1) {
+                this.animations[i].set(value - cur);
+                this.hasPlayed[i] = false;
+            }
             else if(cur < value) {
-                this.animations[i].fraction = 1;
-                this.animations[i].animate();
+                this.animations[i].set(1);
                 this.hasPlayed[i] = true;
             }
             else {
-                this.animations[i].fraction = 0;
-                this.animations[i].animate();
+                this.animations[i].set(0);
                 this.hasPlayed[i] = false;
             }
         }
+        for(let i = this.animations.length - 1; i >= 0 && !this.hasPlayed[i]; i--)
+            if(this.animations[i].name !== "checkpoint" && this.animations[i].name !== "delay")
+                this.animations[i].set(this.animations[i].fraction);
         if(this.isPlaying)
             this.play();
-        else this.pause();
+        else {this.update();this.render();this.pause();}
     };
     pause = () => {
         if(!this.isPlaying)
@@ -757,7 +800,7 @@ export class Animation {
             this.seekbar.setAttribute('min', '0');
             this.seekbar.setAttribute('max', this.countCheckpoints());
             this.seekbar.setAttribute('value', '0');
-            this.seekbar.setAttribute('step', '1');
+            this.seekbar.setAttribute('step', '0.01');
             this.seekbar.style.width = "100%";
             this.seekbar.style.zIndex = "10";
             this.seekbar.style.position = "relative";
@@ -765,7 +808,7 @@ export class Animation {
             this.seekbar.style.top = this.container.clientHeight - 50 + "px";
             this.container.appendChild(this.seekbar);
 
-            this.seekbar.addEventListener("input", e => {this.seek(parseInt(e.target.value)); this.seekbar.setAttribute('value', e.target.value);});
+            this.seekbar.addEventListener("input", e => {this.seek(parseFloat(e.target.value)); this.seekbar.setAttribute('value', e.target.value); this.seekbar.value = e.target.value});
             window.addEventListener("resize", () => this.seekbar.style.top = this.container.clientHeight - 50 + "px");
         }
         this.isPlaying = true;
