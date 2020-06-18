@@ -645,18 +645,79 @@ export class Animation {
         this.hasPlayed.push(false);
     };
 
-    addTrackable = (name, value, trigger, end) => {
-        if(this.trackables.name)
+    // TODO: Add error handling
+    addTrackable = obj => {
+        if(this.trackables[obj.name])
             return 1;
-        this.trackables[name] = {value, trigger, end};
+        this.trackables[obj.name] = {...obj, isPlaying: false};
+        let len = 0;
+        for(let _ in this.trackables)
+            len++;
+        this.addAnimation({name: "addTrackable", index: obj.name});
         return 0;
     };
 
-    updateTrackable = (name, value) => {
-        if(!this.trackables.name)
-            return 1;
-        this.trackables[name].value = value;
-        return 0;
+    removeTrackable = name => {
+        this.addAnimation({name: "removeTrackable", index: name, isPlaying: false});
+    };
+
+    startTrackable = name => {
+        let trackable = this.trackables[name];
+        switch(trackable.type) {
+            case "slider":
+                let slider = document.createElement('input');
+                slider.setAttribute('type', 'range');
+                slider.setAttribute('min', trackable.min);
+                slider.setAttribute('max', trackable.max);
+                slider.setAttribute('value', trackable.defaultValue);
+                slider.setAttribute('step', trackable.step ? trackable.step : 0.01);
+                slider.style.position = 'relative';
+                slider.style.width = "100%";
+
+                slider.addEventListener("input", e => trackable.animate(parseFloat(e.target.value)));
+
+                trackable.object = slider;
+
+                this.controller.appendChild(slider);
+                break;
+            case "input":
+                let span = document.createElement('span');
+                let input = document.createElement('input');
+                input.setAttribute('autocomplete', 'off');
+                input.setAttribute('value', trackable.defaultValue);
+                input.setAttribute("type", "text");
+                input.setAttribute("name", trackable.name);
+                input.style.position = 'relative';
+                input.style.background = "transparent";
+                input.style.marginLeft = "20px";
+                input.style.border = "1px solid #ffffff";
+                input.style.color = "white";
+                input.style.borderRadius = "5px";
+                input.style.height = "30px";
+                input.style.padding = "0 10px";
+                input.style.width = "auto";
+                // input.style.fontFamily = "sans-serif";
+
+                let label = document.createElement('label');
+                label.setAttribute('for', trackable.name);
+                label.textContent = trackable.label;
+                label.style.color = "#ffffff";
+                label.style.position = "relative";
+                // label.style.fontFamily = "sans-serif";
+
+                input.addEventListener("input", e => trackable.animate(parseFloat(e.target.value)));
+
+                trackable.object = span;
+
+                span.appendChild(label);
+                span.appendChild(input);
+                this.controller.appendChild(span);
+                break;
+        }
+    };
+
+    stopTrackable = name => {
+        this.trackables[name].object.style.display = "none";
     };
 
     addHook = (condition, callback) => {
@@ -669,13 +730,17 @@ export class Animation {
             this.sprites[i].setRotationFromQuaternion(this.camera.quaternion, 0);
         }
 
+        if(!this.isPlaying)
+            return;
+
         let played = false;
         let fraction = 1;
         for(let i = this.start; i < this.animations.length; i++)
         {
             if(this.animations[i].name === "checkpoint" || this.animations[i].name === "delay")
                 break;
-            fraction = Math.min(fraction, this.animations[i].fraction);
+            if(this.animations[i].name !== "addTrackable" && this.animations[i].name !== "removeTrackable")
+                fraction = Math.min(fraction, this.animations[i].fraction);
         }
         this.seekbar.setAttribute('value', (this.curIndex + fraction).toString());
         this.seekbar.value = this.seekbar.getAttribute('value');
@@ -686,6 +751,20 @@ export class Animation {
             }
 
             let currentAnimation = this.animations[i];
+            if(currentAnimation.name === "addTrackable") {
+                if(!currentAnimation.isPlaying) {
+                    this.startTrackable(currentAnimation.index);
+                    currentAnimation.isPlaying = true;
+                }
+                continue;
+            }
+            else if(currentAnimation.name === "removeTrackable") {
+                if(!currentAnimation.isPlaying) {
+                    currentAnimation.isPlaying = true;
+                    this.stopTrackable(currentAnimation.index);
+                }
+                continue;
+            }
 
             if (currentAnimation.name === "checkpoint") {
                 if (!played) {
@@ -693,7 +772,7 @@ export class Animation {
                 }
                 return;
             }
-            else if (currentAnimation.name === "delay") {
+            if (currentAnimation.name === "delay") {
                 if(this.delay === 70)
                 {
                     this.hasPlayed[i] = true;
@@ -737,7 +816,11 @@ export class Animation {
                 if(this.animations[i].name === "checkpoint" && i !== 0 && this.animations[i-1].name !== "checkpoint") {
                     frac = false;
                 }
-                else if(this.animations[i].name === "checkpoint" || this.animations[i].name === "delay") {}
+                else if(this.animations[i].name === "checkpoint" ||
+                    this.animations[i].name === "delay" ||
+                    this.animations[i].name === "addTrackable" ||
+                    this.animations[i].name === "removeTrackable"
+                ) {}
                 else if(frac) {
                     this.animations[i].set(value);
                     this.hasPlayed[i] = false;
@@ -763,7 +846,11 @@ export class Animation {
                     this.start = i + 1;
                 }
             }
-            else if(this.animations[i].name === "checkpoint" || this.animations[i].name === "delay"){}
+            else if(this.animations[i].name === "checkpoint" ||
+                this.animations[i].name === "delay" ||
+                this.animations[i].name === "addTrackable" ||
+                this.animations[i].name === "removeTrackable"
+            ){}
             else if(cur <= value && value < cur + 1) {
                 this.animations[i].set(value - cur);
                 this.hasPlayed[i] = false;
@@ -778,7 +865,11 @@ export class Animation {
             }
         }
         for(let i = this.animations.length - 1; i >= 0 && !this.hasPlayed[i]; i--)
-            if(this.animations[i].name !== "checkpoint" && this.animations[i].name !== "delay")
+            if(this.animations[i].name !== "checkpoint" &&
+                this.animations[i].name !== "delay" &&
+                this.animations[i].name !== "addTrackable" &&
+                this.animations[i].name !== "removeTrackable"
+            )
                 this.animations[i].set(this.animations[i].fraction);
         if(this.isPlaying)
             this.play();
@@ -789,38 +880,273 @@ export class Animation {
             return;
 
         this.isPlaying = false;
-        this.renderer.setAnimationLoop(null);
     };
     play = (initial=true) => {
         if (this.isPlaying)
             return;
         if(initial) {
+            this.seekbarContainer = document.createElement('div');
+            let css = `
+.animation-bottom {
+    width: calc(100% - 20px);
+    z-index: 10;
+    top: calc(100% - 50px);
+    position: relative;
+    height: 50px;
+    display: inline-block;
+    opacity: 0;
+    padding: 0 10px;
+    -webkit-transition: all 0.5s ease-in-out;
+    -moz-transition: all 0.5s ease-in-out;
+    -ms-transition: all 0.5s ease-in-out;
+    -o-transition: all 0.5s ease-in-out;
+    transition: all 0.5s ease-in-out;
+}
+.animation-bottom .seekbar {
+    width: 100%;
+}
+.animation-bottom input[type=range] {
+    -webkit-appearance: none; /* Hides the slider so that custom slider can be made */
+    width: 100%; /* Specific width is required for Firefox. */
+    background: transparent; /* Otherwise white in Chrome */
+}
+
+.animation-bottom input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+}
+
+.animation-bottom input[type=range]:focus {
+    outline: none; /* Removes the blue border. You should probably do some kind of focus styling for accessibility reasons though. */
+}
+
+.animation-bottom input[type=range]::-ms-track {
+    width: 100%;
+    cursor: pointer;
+    
+    /* Hides the slider so custom styles can be added */
+    background: transparent; 
+    border-color: transparent;
+    color: transparent;
+}
+.animation-bottom input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+    cursor: pointer;
+    background: #aaaaaa77;
+    border-radius: 0;
+    opacity: 1;
+    -webkit-transition: all 0.25s ease-in-out;
+    -moz-transition: all 0.25s ease-in-out;
+    -ms-transition: all 0.25s ease-in-out;
+    -o-transition: all 0.25s ease-in-out;
+    transition: all 0.25s ease-in-out;
+}
+
+.animation-bottom input[type=range]:hover::-webkit-slider-runnable-track {
+    background: #aaaaaaaa;
+    height: 5px;
+}
+
+.animation-bottom input[type=range]::-moz-range-track {
+    width: 100%;
+    height: 5px;
+    cursor: pointer;
+    background: #3071a9;
+    border-radius: 0;
+    opacity: 0.5
+}
+
+.animation-bottom input[type=range]::-ms-track {
+    width: 100%;
+    height: 5px;
+    cursor: pointer;
+    background: transparent;
+    color: transparent;
+}
+.animation-bottom input[type=range]::-ms-fill-lower {
+    background: #2a6495;
+}
+.animation-bottom input[type=range]:hover::-ms-fill-lower {
+    background: #3071a9;
+}
+.animation-bottom input[type=range]::-ms-fill-upper {
+  background: #3071a9;
+}
+.animation-bottom input[type=range]:focus::-ms-fill-upper {
+    background: #367ebd;
+}
+/* Special styling for WebKit/Blink */
+.animation-bottom input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 12px;
+    width: 12px;
+    border-radius: 10px;
+    background: #ffffff;
+    cursor: pointer;
+    opacity: 1;
+    margin-top: -4px; /* You need to specify a margin in Chrome, but in Firefox and IE it is automatic */
+}
+
+/* All the same stuff for Firefox */
+.animation-bottom input[type=range]::-moz-range-thumb {
+    height: 10px;
+    width: 10px;
+    border-radius: 10px;
+    background: #ffffff;
+    cursor: pointer;
+}
+
+/* All the same stuff for IE */
+.animation-bottom input[type=range]::-ms-thumb {
+    height: 10px;
+    width: 10px;
+    border-radius: 10px;
+    background: #ffffff;
+    cursor: pointer;
+}
+.scene-controller {
+    display: inline-block;
+    width: 20%;
+    margin-left: 20px;
+}
+.scene-controller input[type=range], .scene-controller span {
+    margin-top: 20px;
+}
+.scene-controller input[type=range] {
+    -webkit-appearance: none; /* Hides the slider so that custom slider can be made */
+    width: 100%; /* Specific width is required for Firefox. */
+    background: transparent; /* Otherwise white in Chrome */
+}
+
+.scene-controller input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+}
+
+.scene-controller input[type=range]:focus {
+    outline: none; /* Removes the blue border. You should probably do some kind of focus styling for accessibility reasons though. */
+}
+
+.scene-controller input[type=range]::-ms-track {
+    width: 100%;
+    cursor: pointer;
+    
+    /* Hides the slider so custom styles can be added */
+    background: transparent; 
+    border-color: transparent;
+    color: transparent;
+}
+.scene-controller input[type=range]::-webkit-slider-runnable-track {
+    width: 100%;
+    height: 4px;
+    cursor: pointer;
+    background: #aaaaaa77;
+    border-radius: 0;
+    opacity: 1;
+    -webkit-transition: all 0.25s ease-in-out;
+    -moz-transition: all 0.25s ease-in-out;
+    -ms-transition: all 0.25s ease-in-out;
+    -o-transition: all 0.25s ease-in-out;
+    transition: all 0.25s ease-in-out;
+}
+
+.scene-controller input[type=range]:hover::-webkit-slider-runnable-track {
+    background: #aaaaaaaa;
+    height: 5px;
+}
+
+.scene-controller input[type=range]::-moz-range-track {
+    width: 100%;
+    height: 5px;
+    cursor: pointer;
+    background: #3071a9;
+    border-radius: 0;
+    opacity: 0.5
+}
+
+.scene-controller input[type=range]::-ms-track {
+    width: 100%;
+    height: 5px;
+    cursor: pointer;
+    background: transparent;
+    color: transparent;
+}
+.scene-controller input[type=range]::-ms-fill-lower {
+    background: #2a6495;
+}
+.scene-controller input[type=range]:hover::-ms-fill-lower {
+    background: #3071a9;
+}
+.scene-controller input[type=range]::-ms-fill-upper {
+  background: #3071a9;
+}
+.scene-controller input[type=range]:focus::-ms-fill-upper {
+    background: #367ebd;
+}
+/* Special styling for WebKit/Blink */
+.scene-controller input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 12px;
+    width: 12px;
+    border-radius: 10px;
+    background: #ffffff;
+    cursor: pointer;
+    opacity: 1;
+    margin-top: -4px; /* You need to specify a margin in Chrome, but in Firefox and IE it is automatic */
+}
+
+/* All the same stuff for Firefox */
+.scene-controller input[type=range]::-moz-range-thumb {
+    height: 10px;
+    width: 10px;
+    border-radius: 10px;
+    background: #ffffff;
+    cursor: pointer;
+}
+
+/* All the same stuff for IE */
+.scene-controller input[type=range]::-ms-thumb {
+    height: 10px;
+    width: 10px;
+    border-radius: 10px;
+    background: #ffffff;
+    cursor: pointer;
+}
+            `;
+            let style = document.createElement('style');
+            if(style.styleSheet)
+                style.styleSheet.cssText = css;
+            else
+                style.appendChild(document.createTextNode(css));
+            document.getElementsByTagName('head')[0].appendChild(style);
+            this.seekbarContainer.setAttribute('class', "animation-bottom");
+            this.container.addEventListener('mouseenter', () => this.seekbarContainer.style.opacity = "1");
+            this.container.addEventListener('mouseleave', () => this.seekbarContainer.style.opacity = "0");
+            this.container.style.display = "block";
             this.seekbar = document.createElement('input');
             this.seekbar.setAttribute('type', 'range');
             this.seekbar.setAttribute('min', '0');
             this.seekbar.setAttribute('max', this.countCheckpoints());
             this.seekbar.setAttribute('value', '0');
             this.seekbar.setAttribute('step', '0.01');
-            this.seekbar.style.width = "100%";
-            this.seekbar.style.zIndex = "10";
-            this.seekbar.style.position = "relative";
-            this.seekbar.style.height = "50px";
-            this.seekbar.style.top = this.container.clientHeight - 50 + "px";
-            this.container.appendChild(this.seekbar);
-
+            this.seekbar.setAttribute('class', 'seekbar');
+            this.seekbarContainer.appendChild(this.seekbar);
+            this.container.appendChild(this.seekbarContainer);
             this.seekbar.addEventListener("input", e => {this.seek(parseFloat(e.target.value)); this.seekbar.setAttribute('value', e.target.value); this.seekbar.value = e.target.value});
-            window.addEventListener("resize", () => this.seekbar.style.top = this.container.clientHeight - 50 + "px");
+
+            this.controller = document.createElement('div');
+            this.controller.setAttribute('class', 'scene-controller');
+            this.container.appendChild(this.controller);
+
+            this.renderer.setAnimationLoop(() => {
+                this.update();
+                this.render();
+            });
         }
         this.isPlaying = true;
-        this.renderer.setAnimationLoop(() => {
-            this.update();
-            this.render();
-        });
     };
     stop = () => {
         this.renderer.setAnimationLoop(null);
-        if(this.capturer)
-        {
+        if(this.capturer) {
             this.capturer.save();
             this.capturer.stop();
         }
