@@ -649,7 +649,8 @@ export class Animation {
     addTrackable = obj => {
         if(this.trackables[obj.name])
             return 1;
-        this.trackables[obj.name] = {...obj, isPlaying: false};
+        obj.isPlaying = false;
+        this.trackables[obj.name] = obj;
         let len = 0;
         for(let _ in this.trackables)
             len++;
@@ -663,9 +664,12 @@ export class Animation {
 
     startTrackable = name => {
         let trackable = this.trackables[name];
+        trackable.value = trackable.defaultValue ? parseInt(trackable.defaultValue) : 0;
         switch(trackable.type) {
-            case "slider":
+			case "slider":
+                let spanSlider = document.createElement('span');
                 let slider = document.createElement('input');
+                slider.setAttribute('name', trackable.name);
                 slider.setAttribute('type', 'range');
                 slider.setAttribute('min', trackable.min);
                 slider.setAttribute('max', trackable.max);
@@ -674,14 +678,36 @@ export class Animation {
                 slider.style.position = 'relative';
                 slider.style.width = "100%";
 
-                slider.addEventListener("input", e => trackable.animate(parseFloat(e.target.value)));
+                let labelSlider = document.createElement('span');
+                // labelSlider.setAttribute('for', trackable.name);
+                labelSlider.textContent = trackable.label;
+                labelSlider.style.color = "#ffffff";
+                labelSlider.style.position = "relative";
+                labelSlider.style.whiteSpace = "nowrap";
+                labelSlider.style.marginRight = "10px";
+                labelSlider.style.marginTop = "auto";
+                labelSlider.style.lineHeight = "40px";
 
-                trackable.object = slider;
+                slider.addEventListener("input", e => {
+                	trackable.animate(parseFloat(e.target.value));
+                	trackable.value = e.target.value;
+				});
 
-                this.controller.appendChild(slider);
+                trackable.object = spanSlider;
+                spanSlider.appendChild(labelSlider);
+                spanSlider.appendChild(slider);
+                spanSlider.style.opacity = "0";
+                spanSlider.style.height = "0";
+                this.controller.appendChild(spanSlider);
+
+                setTimeout(() => {
+                	spanSlider.style.opacity = "1";
+                	spanSlider.style.height = "40px";
+				}, 1);
+
                 break;
             case "input":
-                let span = document.createElement('span');
+                let spanInput = document.createElement('span');
                 let input = document.createElement('input');
                 input.setAttribute('autocomplete', 'off');
                 input.setAttribute('value', trackable.defaultValue);
@@ -698,30 +724,50 @@ export class Animation {
                 input.style.width = "auto";
                 // input.style.fontFamily = "sans-serif";
 
-                let label = document.createElement('label');
-                label.setAttribute('for', trackable.name);
-                label.textContent = trackable.label;
-                label.style.color = "#ffffff";
-                label.style.position = "relative";
+                let labelInput = document.createElement('label');
+                labelInput.setAttribute('for', trackable.name);
+                labelInput.textContent = trackable.label;
+                labelInput.style.color = "#ffffff";
+                labelInput.style.position = "relative";
+                labelInput.style.whiteSpace = "nowrap";
+                labelInput.style.marginRight = "10px";
+                labelInput.style.marginTop = "0";
+                labelInput.style.lineHeight = "40px";
                 // label.style.fontFamily = "sans-serif";
 
-                input.addEventListener("input", e => trackable.animate(parseFloat(e.target.value)));
+                input.addEventListener("input", e => {
+                	trackable.animate(parseFloat(e.target.value));
+                	trackable.value = e.target.value;
+				});
 
-                trackable.object = span;
+                trackable.object = spanInput;
 
-                span.appendChild(label);
-                span.appendChild(input);
-                this.controller.appendChild(span);
+                spanInput.appendChild(labelInput);
+                spanInput.appendChild(input);
+
+                spanInput.style.opacity = "0";
+                spanInput.style.height = "0";
+                this.controller.appendChild(spanInput);
+                setTimeout(() => {
+                	spanInput.style.opacity = "1";
+                	spanInput.style.height = "40px";
+				}, 1);
                 break;
         }
     };
 
     stopTrackable = name => {
-        this.trackables[name].object.style.display = "none";
+        this.trackables[name].object.style.opacity = "0";
+        this.trackables[name].object.style.height = "0";
+        // setTimeout(() => this.trackables[name].object.style.display = "none", 500);
     };
 
-    addHook = (condition, callback) => {
-        this.hooks.push({condition, callback});
+    addHook = ({condition, init = null, onSatisfied, onDissatisfied = null, animate = false}) => {
+    	this.addAnimation({name: "checkpoint"});
+        this.animations.push({name: "hook", index: this.hooks.length});
+        if(init)
+        	init();
+        this.hooks.push({condition, onSatisfied, onDissatisfied, animate, now: false});
     };
 
     update = () => {
@@ -730,8 +776,26 @@ export class Animation {
             this.sprites[i].setRotationFromQuaternion(this.camera.quaternion, 0);
         }
 
-        if(!this.isPlaying)
+        if(!this.isPlaying || this.start >= this.animations.length)
             return;
+
+        if(this.animations[this.start].name === "hook") {
+        	let hook = this.hooks[this.animations[this.start].index];
+        	if(hook.condition() && !hook.now) {
+        		hook.now = true;
+        		hook.onSatisfied();
+        		if(hook.onDissatisfied === null) {
+        			this.start++;
+        			return;
+				}
+			}
+        	if(!hook.condition() && hook.now) {
+        		hook.now = false;
+        		hook.onDissatisfied();
+			}
+
+        	return;
+		}
 
         let played = false;
         let fraction = 1;
@@ -801,8 +865,8 @@ export class Animation {
     };
     countCheckpoints = () => {
         let ret = 0;
-        for(let i = 1;i<this.animations.length; i++) {
-            if(this.animations[i].name === "checkpoint" && this.animations[i-1].name !== "checkpoint")
+        for(let i = 1;i < this.animations.length; i++) {
+            if(this.animations[i].name === "checkpoint" && this.animations[i-1].name !== "checkpoint" && this.animations[i+1].name !== "hook")
                 ret++;
         }
         return ret.toString();
@@ -813,13 +877,14 @@ export class Animation {
             this.start = 0;
             let frac = true;
             for(let i = 0;i < this.animations.length; i++) {
-                if(this.animations[i].name === "checkpoint" && i !== 0 && this.animations[i-1].name !== "checkpoint") {
+                if(this.animations[i].name === "checkpoint" && i !== 0 && this.animations[i-1].name !== "checkpoint" && this.animations[i-1].name !== "hook") {
                     frac = false;
                 }
                 else if(this.animations[i].name === "checkpoint" ||
                     this.animations[i].name === "delay" ||
                     this.animations[i].name === "addTrackable" ||
-                    this.animations[i].name === "removeTrackable"
+                    this.animations[i].name === "removeTrackable" ||
+					this.animations[i].name === "hook"
                 ) {}
                 else if(frac) {
                     this.animations[i].set(value);
@@ -831,7 +896,12 @@ export class Animation {
                 }
             }
             for(let i = this.animations.length - 1; i >= 0; i--)
-                if(this.animations[i].name !== "checkpoint" && this.animations[i].name !== "delay")
+                if(this.animations[i].name !== "checkpoint"
+					&& this.animations[i].name !== "delay"
+					&& this.animations[i].name !== "addTrackable"
+					&& this.animations[i].name !== "removeTrackable"
+					&& this.animations[i].name !== "hook"
+				)
                     this.animations[i].set(this.animations[i].fraction);
             if(this.isPlaying)
                 this.play();
@@ -849,7 +919,8 @@ export class Animation {
             else if(this.animations[i].name === "checkpoint" ||
                 this.animations[i].name === "delay" ||
                 this.animations[i].name === "addTrackable" ||
-                this.animations[i].name === "removeTrackable"
+                this.animations[i].name === "removeTrackable" ||
+				this.animations[i].name === "hook"
             ){}
             else if(cur <= value && value < cur + 1) {
                 this.animations[i].set(value - cur);
@@ -868,7 +939,8 @@ export class Animation {
             if(this.animations[i].name !== "checkpoint" &&
                 this.animations[i].name !== "delay" &&
                 this.animations[i].name !== "addTrackable" &&
-                this.animations[i].name !== "removeTrackable"
+                this.animations[i].name !== "removeTrackable" &&
+				this.animations[i].name !== "hook"
             )
                 this.animations[i].set(this.animations[i].fraction);
         if(this.isPlaying)
@@ -886,6 +958,7 @@ export class Animation {
             return;
         if(initial) {
             this.seekbarContainer = document.createElement('div');
+            this.animations.push({name: "checkpoint"});
             let css = `
 .animation-bottom {
     width: calc(100% - 20px);
@@ -1009,8 +1082,16 @@ export class Animation {
     width: 20%;
     margin-left: 20px;
 }
+.scene-controller span {
+    -webkit-transition: all 0.5s ease-in-out;
+    -moz-transition: all 0.5s ease-in-out;
+    -ms-transition: all 0.5s ease-in-out;
+    -o-transition: all 0.5s ease-in-out;
+    transition: all 0.5s ease-in-out;
+}
 .scene-controller input[type=range], .scene-controller span {
-    margin-top: 20px;
+    margin: auto 0;
+    display: flex;
 }
 .scene-controller input[type=range] {
     -webkit-appearance: none; /* Hides the slider so that custom slider can be made */

@@ -20,7 +20,7 @@ let {ORIGIN} = constants;
         min: "0.1",
         max: "3",
         defaultValue: "1",
-        value: 1,
+        label: "Text Size",
         animate: value => {
             text.object.scale.multiplyScalar(value / trackable.value);
             trackable.value = value;
@@ -31,16 +31,21 @@ let {ORIGIN} = constants;
         name: "textSizing",
         type: "input",
         defaultValue: "1",
-        value: 1,
         label: "Text Size",
         animate: value => {
             if(!value) return;
             text.object.scale.multiplyScalar(value / trackable.value);
             trackable.value = value;
+            console.log(value);
         },
     };
+
     anim.addTrackable(trackable);
     anim.addTrackable(trackable2);
+    anim.addHook({
+        condition: () => trackable2.value > 1.2,
+        onSatisfied: () => console.log("SATISFIED"),
+    });
     text.checkpoint();
     text.moveBy({x: 10, y: 0});
     text.checkpoint();
