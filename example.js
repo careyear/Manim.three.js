@@ -42,10 +42,10 @@ let {ORIGIN} = constants;
 
     anim.addTrackable(trackable);
     anim.addTrackable(trackable2);
-    anim.addHook({
-        condition: () => trackable2.value > 1.2,
-        onSatisfied: () => console.log("SATISFIED"),
-    });
+    // anim.addHook({
+    //     condition: () => trackable2.value > 1.2,
+    //     onSatisfied: () => console.log("SATISFIED"),
+    // });
     text.checkpoint();
     text.moveBy({x: 10, y: 0});
     text.checkpoint();
