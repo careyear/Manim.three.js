@@ -690,7 +690,7 @@ export class Animation {
 
                 slider.addEventListener("input", e => {
                 	trackable.animate(parseFloat(e.target.value));
-                	trackable.value = e.target.value;
+                	trackable.value = parseFloat(e.target.value);
 				});
 
                 trackable.object = spanSlider;
@@ -735,10 +735,7 @@ export class Animation {
                 labelInput.style.lineHeight = "40px";
                 // label.style.fontFamily = "sans-serif";
 
-                input.addEventListener("input", e => {
-                	trackable.animate(parseFloat(e.target.value));
-                	trackable.value = e.target.value;
-				});
+                input.addEventListener("input", e => trackable.animate(parseFloat(e.target.value)));
 
                 trackable.object = spanInput;
 
@@ -776,12 +773,18 @@ export class Animation {
             this.sprites[i].setRotationFromQuaternion(this.camera.quaternion, 0);
         }
         if(this.curIndex === parseInt(this.countCheckpoints())) {
+            if(this.isPlaying)
+                for(let i in this.trackables)
+                    this.stopTrackable(i);
             this.pause();
             return;
         }
 
+        this.timeContainer.innerText = this.sanitizeTime(this.curIndex) + " / " + this.sanitizeTime(this.countCheckpoints() - 1);
+
         if(!this.isPlaying || this.start >= this.animations.length)
             return;
+
 
         if(this.animations[this.start].name === "hook") {
         	let hook = this.hooks[this.animations[this.start].index];
@@ -793,7 +796,7 @@ export class Animation {
         			return;
 				}
 			}
-        	if(!hook.condition() && hook.now) {
+        	if(!hook.condition() && hook.now && hook.onDissatisfied) {
         		hook.now = false;
         		hook.onDissatisfied();
 			}
@@ -810,7 +813,6 @@ export class Animation {
             if(this.animations[i].name !== "addTrackable" && this.animations[i].name !== "removeTrackable")
                 fraction = Math.min(fraction, this.animations[i].fraction);
         }
-        this.timeContainer.innerText = this.sanitizeTime(this.curIndex) + " / " + this.sanitizeTime(this.countCheckpoints());
         this.seekbar.setAttribute('value', (this.curIndex + fraction).toString());
         this.seekbar.value = this.seekbar.getAttribute('value');
         for (let i = this.start; i < this.animations.length; i++) {
@@ -871,7 +873,7 @@ export class Animation {
     countCheckpoints = () => {
         let ret = 0;
         for(let i = 1;i < this.animations.length; i++) {
-            if(this.animations[i].name === "checkpoint" && this.animations[i-1].name !== "checkpoint" && this.animations[i+1].name !== "hook")
+            if(this.animations[i].name === "checkpoint" && this.animations[i-1].name !== "checkpoint")// && this.animations[i+1].name !== "hook")
                 ret++;
         }
         return ret.toString();
@@ -908,6 +910,16 @@ export class Animation {
 					&& this.animations[i].name !== "hook"
 				)
                     this.animations[i].set(this.animations[i].fraction);
+                else if(this.animations[i].name === "addTrackable") {
+                    this.animations[i].isPlaying = false;
+                    this.stopTrackable(this.animations[i].index);
+                }
+                else if(this.animations[i].name === "removeTrackable") {
+                    this.animations[i].isPlaying = false;
+                    this.startTrackable(this.animations[i].index);
+                }
+                else if(this.animations[i].name === "hook")
+                    this.hooks[this.animations[i].index].now = false;
             if(this.isPlaying)
                 this.play();
             else {this.update();this.render();this.pause();}
@@ -948,6 +960,16 @@ export class Animation {
 				this.animations[i].name !== "hook"
             )
                 this.animations[i].set(this.animations[i].fraction);
+            else if(this.animations[i].name === "addTrackable") {
+                this.animations[i].isPlaying = false;
+                this.stopTrackable(this.animations[i].index);
+            }
+            else if(this.animations[i].name === "removeTrackable") {
+                this.animations[i].isPlaying = false;
+                this.startTrackable(this.animations[i].index);
+            }
+            else if(this.animations[i].name === "hook")
+                this.hooks[this.animations[i].index].now = false;
         if(this.isPlaying)
             this.play();
         else {this.update();this.render();this.pause();}
@@ -967,6 +989,8 @@ export class Animation {
         return smin + ":" + ssec;
     };
     play = (initial = true) => {
+        console.log(this.animations);
+        console.log(this.countCheckpoints());
         if (this.isPlaying)
             return;
         if(initial) {
@@ -1248,7 +1272,7 @@ export class Animation {
             this.seekbarContainer.appendChild(this.playButton);
 
             this.timeContainer = document.createElement('span');
-            this.timeContainer.innerText = "00:00 / " + this.sanitizeTime(this.countCheckpoints());
+            this.timeContainer.innerText = "00:00 / " + this.sanitizeTime(this.countCheckpoints() - 1);
             this.timeContainer.style.position = "relative";
             this.timeContainer.style.color = "white";
             this.timeContainer.style.lineHeight = "25px";
@@ -1307,8 +1331,10 @@ export class Animation {
                 this.render();
             });
         }
-        this.playButton.setAttribute('class', "fas fa-pause");
-        this.isPlaying = true;
+        else {
+            this.playButton.setAttribute('class', "fas fa-pause");
+            this.isPlaying = true;
+        }
     };
     stop = () => {
         this.renderer.setAnimationLoop(null);
