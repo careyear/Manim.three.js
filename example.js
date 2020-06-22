@@ -15,8 +15,7 @@ let {ORIGIN} = constants;
 	let text2 = new Text(anim);
 	let pos = text.down(2.3);
 	pos.x -= 4;
-	await text2.construct("Try\\ to\\ increase\\ the\\ size\\ of\\ the\\ text\\ by\\ 1 . 2\\ times .", '#ffd829', 8, pos);
-
+	await text2.construct("Try\\ to\\ increase\\ the\\ size\\ of\\ the\\ text\\ using\\ slider.", '#ffd829', 8, pos);
 	text.draw(150000);
 	text.checkpoint();
 	text.moveBy({x: -10, y: 0, z: 0});
