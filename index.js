@@ -42,7 +42,7 @@ export const promisifyLoader = ( loader, onProgress ) => {
 
 export class Animation {
 
-    constructor(controls = true, documentId = 'scene-container') {
+    constructor({controls = true, documentId = 'scene-container', autoplay = true}) {
         this.isPlaying = false;
         this.hasPlayed = [];
         this.animations = []; // Animations are a dictionary = {name, function, terminate_condition, ...letiables}
@@ -52,6 +52,7 @@ export class Animation {
         this.trackables = {};
         this.hooks = [];
         this.curIndex = 0;
+        this.autoplay = autoplay;
 
         /* This way of animating is not provably optimal but works well with small number
         * of animations. We will think of better ways after this crude implementation works
@@ -545,101 +546,6 @@ export class Animation {
             return line;
     };
 
-    createCube = (side, texturePath = './textures/wood.jpg', i = 0, j = 0, k = 0, angleX = 0, angleY = 0, angleZ = 0) => {
-        // side = scale(side, canvasX);
-        this.createMeshes(new BoxBufferGeometry(side, side, side), texturePath, i, j, k, angleX, angleY, angleZ);
-    };
-    createLineSquare = (sqLength, x, y, animate = false) => {
-        let squareShape = new Shape()
-            .moveTo(x, y)
-            .lineTo(x, y)
-            .lineTo(x + sqLength, y)
-            .lineTo(x + sqLength, y - sqLength)
-            .lineTo(x, y - sqLength);
-        return this.createLineShapes(squareShape, 0xffffff, animate, 0, 0, 0, 0, 0, 0);
-    };
-    createSphere = (radius, widthSegments, heightSegments, texturePath = './textures/wood.jpg', i = 0, j = 0, k = 0, angleX = 0, angleY = 0, angleZ = 0) => {
-
-        // radius = scale(radius, canvasX);
-        return this.createMeshes(new SphereGeometry(radius, widthSegments, heightSegments), texturePath, i, j, k, angleX, angleY, angleZ);
-    };
-    createLineCircle = (radius, x, y, numberOfSegments = 1000, animate = true) => {
-        let shape = new Shape().moveTo(radius, 0);
-        for (let i = 1; i <= numberOfSegments; i++) {
-            let theta = (i / numberOfSegments) * Math.PI * 2;
-            shape = shape.lineTo(
-                Math.cos(theta) * radius,
-                Math.sin(theta) * radius
-            );
-        }
-        return this.createLineShapes(shape, 0xffffff, animate, x, y, 0.001, 0, 0, 0);
-    };
-
-    createArray = async (array, x , y, size, animate = true) => {
-        let ret = [];
-        for(let i = 0; i < array.length; i++)
-            ret.push(this.createLineSquare(size, x + i * size, y , animate));
-        for(let i = 0; i < array.length; i++)
-            ret = ret.concat(await this.addText(array[i], "#ffffff", 6 * size, x + i * (size - 0.05) + 0.5, y - 0.6 * (size - 0.5) - 0.5, animate));
-        return ret;
-    };
-
-    createArrow = (i1, j1, k1, i2, j2, k2, length, color, is2D) => {
-        if (is2D) {
-            k1 = 0;
-            k2 = 0;
-        }
-
-        let dir = new Vector3(i2 - i1, j2 - j1, k2 - k1);
-        // makes it a unit vector
-        dir.normalize();
-
-        let origin = new Vector3(i1, j1, k1);
-
-        let geometry = new ArrowHelper(dir, origin, length, color);
-
-        this.scene.add(geometry);
-        return geometry;
-    };
-    createPolygon = (hex, arr) => {
-
-        let material = new LineBasicMaterial({
-            color: hex
-        });
-
-        let geometry = new Geometry();
-
-        let l = arr.length;
-
-// add all the points to the geometry, can also scale them if required
-        for (let i = 0; i < l; i++)
-            geometry.vertices.push(new Vector3(arr[i].x - arr[0].x, arr[i].y - arr[0].y, arr[i].z - arr[0].z));
-
-        this.scene.add(new Line(geometry, material));
-
-    };
-
-    createGraph = async (graph, directed = false, radius = 0.25, animate = true) => {
-        let ret = [];
-        for(let i = 0; i < graph.nodes.length; i++) {
-            let node = graph.nodes[i];
-            // noinspection JSUnfilteredForInLoop
-            ret.push(this.createLineCircle(radius, node.x, node.y, 50, animate));
-        }
-        for(let i in graph.edges) {
-            let edge = graph.edges[i];
-            if(directed)
-                ret.push(this.createArrow(graph.nodes[edge[0]].x, graph.nodes[edge[0]].y, 0, graph.nodes[edge[1]].x, graph.nodes[edge[1]].y, 0, 0.0002, 0xffffff, true));
-            else
-                ret.push(this.createLine(graph.nodes[edge[0]].x, graph.nodes[edge[0]].y, graph.nodes[edge[1]].x, graph.nodes[edge[1]].y));
-        }
-        for(let i = 0; i < graph.nodes.length; i++) {
-            let label = i + 1;
-            ret = ret.concat(await this.addText(label.toString(10), "#ffffff", 5, graph.nodes[i].x - radius / 2.0, graph.nodes[i].y - radius / 2.0, 0.02));
-        }
-        return ret;
-    };
-
     addAnimation = (animation) => {
         this.animations.push(animation);
         this.hasPlayed.push(false);
@@ -772,15 +678,24 @@ export class Animation {
             this.sprites[i].lookAt(this.camera.position);
             this.sprites[i].setRotationFromQuaternion(this.camera.quaternion, 0);
         }
+
+        this.timeContainer.innerText = this.sanitizeTime(this.curIndex) + " / " + this.sanitizeTime(this.countCheckpoints());
+
         if(this.curIndex === parseInt(this.countCheckpoints())) {
-            if(this.isPlaying)
-                for(let i in this.trackables)
-                    this.stopTrackable(i);
-            this.pause();
+        	if(this.autoplay) {
+        		this.playButton.setAttribute('class', "fas fa-play");
+        		this.seekbar.value = 0;
+				this.seek(0);
+			}
+        	else {
+				if (this.isPlaying)
+					for (let i in this.trackables)
+						this.stopTrackable(i);
+				this.playButton.setAttribute('class', "fas fa-redo");
+				this.pause();
+			}
             return;
         }
-
-        this.timeContainer.innerText = this.sanitizeTime(this.curIndex) + " / " + this.sanitizeTime(this.countCheckpoints() - 1);
 
         if(!this.isPlaying || this.start >= this.animations.length)
             return;
@@ -913,11 +828,14 @@ export class Animation {
                 else if(this.animations[i].name === "addTrackable") {
                     this.animations[i].isPlaying = false;
                     this.stopTrackable(this.animations[i].index);
+                    let trackable = this.trackables[this.animations[i].index];
+                    trackable.animate(parseFloat(trackable.defaultValue));
                 }
-                else if(this.animations[i].name === "removeTrackable") {
-                    this.animations[i].isPlaying = false;
-                    this.startTrackable(this.animations[i].index);
-                }
+                // TODO: Debug the below commented line
+                // else if(this.animations[i].name === "removeTrackable") {
+                //     this.animations[i].isPlaying = false;
+                //     this.startTrackable(this.animations[i].index);
+                // }
                 else if(this.animations[i].name === "hook")
                     this.hooks[this.animations[i].index].now = false;
             if(this.isPlaying)
@@ -989,8 +907,6 @@ export class Animation {
         return smin + ":" + ssec;
     };
     play = (initial = true) => {
-        console.log(this.animations);
-        console.log(this.countCheckpoints());
         if (this.isPlaying)
             return;
         if(initial) {
@@ -1264,7 +1180,6 @@ export class Animation {
             this.playButton.style.margin = "0 10px";
             this.playButton.style.cursor = "pointer";
             this.playButton.addEventListener("click", () => {
-                console.log(this.isPlaying);
                 if(this.isPlaying)
                     this.pause();
                 else this.play(false);
@@ -1326,14 +1241,26 @@ export class Animation {
             this.controller.setAttribute('class', 'scene-controller');
             this.container.appendChild(this.controller);
 
+            if(this.autoplay) {
+				this.playButton.setAttribute('class', "fas fa-pause");
+				this.isPlaying = true;
+			}
+
             this.renderer.setAnimationLoop(() => {
                 this.update();
                 this.render();
             });
         }
         else {
-            this.playButton.setAttribute('class', "fas fa-pause");
-            this.isPlaying = true;
+        	if(this.curIndex === parseInt(this.countCheckpoints())) {
+        		this.playButton.setAttribute('class', "fas fa-play");
+        		this.seekbar.value = 0;
+				this.seek(0);
+			}
+        	else {
+				this.playButton.setAttribute('class', "fas fa-pause");
+				this.isPlaying = true;
+			}
         }
     };
     stop = () => {

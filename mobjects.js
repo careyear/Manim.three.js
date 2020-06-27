@@ -145,9 +145,6 @@ class Mobject {
 			set: frac => {
 				ret.fraction = frac;
 				let mul = Mobject.easeInOut(ret.fraction);
-				console.log(ret.init_x + x * mul,
-					ret.init_y + y * mul,
-					ret.init_z + z * mul, mul);
 				this.object.position.set(
 					ret.init_x + x * mul,
 					ret.init_y + y * mul,
@@ -286,7 +283,7 @@ export class Line extends Mobject {
 				z: z2 * 2
 			}
 		};
-    }
+    };
 }
 
 export class Text extends Mobject {
@@ -381,8 +378,9 @@ export class Arrow extends Mobject {
         dir.normalize();
 
         let origin = new Vector3(x1, y1, z1);
+        origin.multiplyScalar(2);
 
-        let length = Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1) + (z2 - z1) * (z2 - z1));
+        let length = 2 * Math.sqrt((x2 - x1) * (x2 - x1) + (y2 - y1) * (y2 - y1) + (z2 - z1) * (z2 - z1));
 
         this.object = new ArrowHelper(dir, origin, animate ? 0.001 : length, color);
 		this.length = length;
@@ -405,11 +403,12 @@ export class Arrow extends Mobject {
 			name: "arrow draw",
 			fraction: 0,
 			animate: () => {
-				ret.fraction += 0.02;
+				ret.fraction += 1 / 60.0;
 				this.object.setLength(this.length * Arrow.easeInOut(ret.fraction), Math.min(0.2 * this.length * Arrow.easeInOut(ret.fraction), 0.2), 0.5 * Math.min(0.2 * this.length * Arrow.easeInOut(ret.fraction), 0.2));
 			},
-			reset: () => {
-				ret.fraction = 0;
+			set: value => {
+				ret.fraction = value;
+				this.object.setLength(this.length * Arrow.easeInOut(ret.fraction), Math.min(0.2 * this.length * Arrow.easeInOut(ret.fraction), 0.2), 0.5 * Math.min(0.2 * this.length * Arrow.easeInOut(ret.fraction), 0.2));
 			},
 			terminateCond: () => (ret.fraction >= 1)
 		};
@@ -418,22 +417,62 @@ export class Arrow extends Mobject {
 	undraw = () => {
 		let ret = {
 			name: "arrow animation",
-			fraction: 1,
+			fraction: 0,
 			animate: () => {
-				ret.fraction -= 0.02;
-				this.object.setLength(this.length * Arrow.easeInOut(ret.fraction), Math.min(0.2 * this.length * Arrow.easeInOut(ret.fraction), 0.2), 0.5 * Math.min(0.2 * this.length * Arrow.easeInOut(ret.fraction), 0.2));
+				ret.fraction += 1 / 60.0;
+				this.object.setLength(this.length * Arrow.easeInOut(1 - ret.fraction), Math.min(0.2 * this.length * Arrow.easeInOut(1 - ret.fraction), 0.00001), 0.5 * Math.min(0.2 * this.length * Arrow.easeInOut(ret.fraction), 0.0001));
 			},
 			reset: () => {
 				ret.fraction = 0;
 			},
-			terminateCond: () => (ret.fraction <= 0)
+			set: value => {
+				ret.fraction = value;
+				this.object.setLength(this.length * Arrow.easeInOut(1 - ret.fraction), Math.min(0.2 * this.length * Arrow.easeInOut(1 - ret.fraction), 0.00001), 0.5 * Math.min(0.2 * this.length * Arrow.easeInOut(ret.fraction), 0.00001));
+			},
+			terminateCond: () => (ret.fraction >= 1)
 		};
 		this.anim.addAnimation(ret);
 	};
 }
 
 export class Graph2D extends Mobject {
+	construct = ({x, y}, {l, b}, grid = 0) => {
+		this.object = new Group();
+		let x_axis = new Line(this.anim);
+		let y_axis = new Line(this.anim);
+		x_axis.construct({x: x - b / 2.0, y}, {x: x + b / 2.0, y}, '#ffffff');
+		y_axis.construct({x, y: y - l / 2.0}, {x, y: y + l / 2.0}, '#ffffff');
+		this.object.add(y_axis.object);
+		this.object.add(x_axis.object);
+		this.position = {x, y};
+		if(grid) {
+			for(let i = y + grid;i <= y + l / 2.0; i += grid) {
+				let l = new Line(this.anim);
+				l.construct({x: x - b / 2.0, y: i}, {x: x + b / 2.0, y: i}, '#3b5aff');
+				this.object.add(l.object);
+			}
+			for(let i = y - grid;i >= y - l / 2.0; i -= grid) {
+				let l = new Line(this.anim);
+				l.construct({x: x - b / 2.0, y: i}, {x: x + b / 2.0, y: i}, '#3b5aff');
+				this.object.add(l.object);
+			}
+			for(let i = x + grid;i <= x + b / 2.0; i += grid) {
+				let line = new Line(this.anim);
+				line.construct({x: i, y: y - l / 2.0}, {x: i, y: y + l / 2.0}, '#3b5aff');
+				this.object.add(line.object);
+			}
+			for(let i = x - grid;i >= x - b / 2.0; i -= grid) {
+				let line = new Line(this.anim);
+				line.construct({x: i, y: y - l / 2.0}, {x: i, y: y + l / 2.0}, '#3b5aff');
+				this.object.add(line.object);
+			}
+		}
+		this.anim.scene.add(this.object);
+	};
 
+	transform = m => {
+
+	};
 }
 
 export class GraphTheory extends Mobject {
@@ -552,7 +591,7 @@ export class GraphTheory extends Mobject {
 }
 
 export class Circle extends Mobject {
-	construct = (radius, {x, y, z=0}, numberOfSegments = 1000, animate = true) => {
+	construct = (radius, {x, y, z=0}, color = '#ffffff', numberOfSegments = 1000, animate = true) => {
         let shape = new Shape().moveTo(radius, 0);
         for (let i = 1; i <= numberOfSegments; i++) {
             let theta = (i / numberOfSegments) * Math.PI * 2;
@@ -562,10 +601,11 @@ export class Circle extends Mobject {
             );
         }
         let group = new Group();
-        group.add(this.anim.createLineShapes(shape, 0xffffff, animate, x, y, 0.001, 0, 0, 0));
-        this.object = group;
+        let obj = this.anim.createLineShapes(shape, color, animate, x, y, 0.001, 0, 0, 0);
+        group.add(obj);
+        this.object = obj;
         this.anim.scene.add(group);
-        this.object.position.set(x, y, 0);
+        this.object.position.set(2*x, 2*y, 0);
 		this.position = {
 			x: this.object.position.x,
 			y: this.object.position.y,
