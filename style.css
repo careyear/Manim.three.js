@@ -13,3 +13,7 @@ body {
     padding: 0;
     margin: 0;
 }
+.animation-bottom {
+    top: calc(100% - 50px);
+    width: calc(100% - 20px);
+}

@@ -920,9 +920,7 @@ export class Animation {
             this.animations.push({name: "checkpoint"});
             let css = `
 .animation-bottom {
-    width: calc(100% - 20px);
     z-index: 10;
-    top: calc(100% - 50px);
     position: relative;
     height: 50px;
     display: inline-block;
