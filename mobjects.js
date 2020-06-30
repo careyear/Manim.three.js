@@ -482,7 +482,7 @@ export class GraphTheory extends Mobject {
         for(let i = 0; i < graph.nodes.length; i++) {
             let node = graph.nodes[i];
             let circle = new Circle(this.anim);
-            circle.construct(radius, node, 50, animate);
+            circle.construct(radius, node, node.color ? node.color : '#ffffff', 1000, animate);
             this.object.add(circle.object);
         }
         for(let i = 0; i < graph.edges.length; i++) {
@@ -503,9 +503,9 @@ export class GraphTheory extends Mobject {
         	}
         }
         for(let i = 0; i < graph.nodes.length; i++) {
-            let {label = (i + 1).toString(10), color = "#ffffff"} = graph.nodes[i];
+            let {label = (i + 1).toString(10), labelColor = "#ffffff"} = graph.nodes[i];
             let text = new Text(this.anim);
-            await text.construct(label, color, 8, {x: 2 * (graph.nodes[i].x - radius) + 0.95, y: 2 * (graph.nodes[i].y - radius) + 1, z: 0.02});
+            await text.construct(label, labelColor, 12 * radius, {x: 2 * (graph.nodes[i].x - radius) + 1.6 * radius, y: 2 * (graph.nodes[i].y - radius) + 1.6 * radius, z: 0.02});
             this.object.add(text.object);
         }
         this.anim.scene.add(this.object);
@@ -551,15 +551,15 @@ export class GraphTheory extends Mobject {
 				size = 300000;
 			let ret = {
 				name: "draw",
-				fraction: 1,
+				fraction: 0,
 				animate: () => {
-					ret.fraction -= 0.01;
-					f(obj, obj => obj.material.dashSize = Mobject.easeInOutQuint(ret.fraction) * size);
+					ret.fraction += 1.0 / 59;
+					f(obj, obj => obj.material.dashSize = Mobject.easeInOutQuint(1 - ret.fraction) * size);
 				},
 				reset: () => {
 					ret.fraction = 0;
 				},
-				terminateCond: () => (ret.fraction < 0)
+				terminateCond: () => (ret.fraction >= 1)
 			};
 			this.anim.addAnimation(ret);
 		}

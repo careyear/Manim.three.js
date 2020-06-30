@@ -42,7 +42,7 @@ export const promisifyLoader = ( loader, onProgress ) => {
 
 export class Animation {
 
-    constructor({controls = true, documentId = 'scene-container', autoplay = true}) {
+    constructor({controls = true, documentId = 'scene-container', autoplay = true, autoReplay = autoplay}) {
         this.isPlaying = false;
         this.hasPlayed = [];
         this.animations = []; // Animations are a dictionary = {name, function, terminate_condition, ...letiables}
@@ -54,6 +54,7 @@ export class Animation {
         this.curIndex = 0;
         this.autoplay = autoplay;
         this.isControls = controls;
+        this.autoReplay = autoReplay;
 
         /* This way of animating is not provably optimal but works well with small number
         * of animations. We will think of better ways after this crude implementation works
@@ -61,6 +62,8 @@ export class Animation {
         */
 
         this.container = document.getElementById(documentId);
+        if(!this.container)
+            return;
 
         this.scene = new Scene();
         this.scene.background = new Color(0x000000);
@@ -585,6 +588,7 @@ export class Animation {
                 slider.setAttribute('step', trackable.step ? trackable.step : 0.01);
                 slider.style.position = 'relative';
                 slider.style.width = "100%";
+                slider.style.minWidth = "60px";
 
                 let labelSlider = document.createElement('span');
                 // labelSlider.setAttribute('for', trackable.name);
@@ -683,8 +687,9 @@ export class Animation {
         if(this.isControls)
             this.timeContainer.innerText = this.sanitizeTime(this.curIndex) + " / " + this.sanitizeTime(this.countCheckpoints());
 
+        // console.log(this.isPlaying, this.curIndex, parseInt(this.countCheckpoints()));
         if(this.curIndex === parseInt(this.countCheckpoints())) {
-        	if(this.autoplay) {
+        	if(this.autoReplay) {
         		if(this.isControls) {
                     this.playButton.setAttribute('class', "fas fa-play");
                     this.seekbar.value = 0;
@@ -695,7 +700,8 @@ export class Animation {
 				if (this.isPlaying)
 					for (let i in this.trackables)
 						this.stopTrackable(i);
-				this.playButton.setAttribute('class', "fas fa-redo");
+                if(this.isControls)
+				    this.playButton.setAttribute('class', "fas fa-redo");
 				this.pause();
 			}
             return;
@@ -774,6 +780,7 @@ export class Animation {
                 else this.delay++;
                 return;
             }
+
             if (!this.hasPlayed[i]) {
                 if (currentAnimation.terminateCond()) {
                     this.hasPlayed[i] = true;
@@ -901,7 +908,8 @@ export class Animation {
             return;
 
         this.isPlaying = false;
-        this.playButton.setAttribute('class', "fas fa-play");
+        if(this.isControls)
+            this.playButton.setAttribute('class', "fas fa-play");
     };
     sanitizeTime = value => {
         let minutes = Math.floor(value / 60);
@@ -914,6 +922,7 @@ export class Animation {
         if (this.isPlaying)
             return;
         if(initial) {
+            this.animations.push({name: "checkpoint"});
             if(this.controls) {
                 let fa = document.createElement('script');
                 fa.setAttribute('src', "https://kit.fontawesome.com/0dd3616480.js");
@@ -921,7 +930,6 @@ export class Animation {
                 document.getElementsByTagName('head')[0].appendChild(fa);
 
                 this.seekbarContainer = document.createElement('div');
-                this.animations.push({name: "checkpoint"});
                 let css = `
 .animation-bottom {
     z-index: 10;
@@ -1193,7 +1201,7 @@ export class Animation {
                 this.seekbarContainer.appendChild(this.playButton);
 
                 this.timeContainer = document.createElement('span');
-                this.timeContainer.innerText = "00:00 / " + this.sanitizeTime(this.countCheckpoints() - 1);
+                this.timeContainer.innerText = "00:00 / " + this.sanitizeTime(this.countCheckpoints());
                 this.timeContainer.style.position = "relative";
                 this.timeContainer.style.color = "white";
                 this.timeContainer.style.lineHeight = "25px";
