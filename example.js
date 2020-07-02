@@ -1,14 +1,19 @@
 import {Animation} from './index.js';
-import {Text, Circle, Arrow, Line} from './mobjects.js';
+import {Text, Circle, Arrow, Line, GraphTheory} from './mobjects.js';
 
 (async () => {
-	let anim = new Animation({autoplay: false});
+	let bg = new Animation({controls: false, autoReplay: false});
 
-	let text = new Text(anim);
-	await text.construct("Thanks!", '#00CCFF', 6, {x: -1, y: 0});
-	text.write(170000);
-	text.checkpoint();
-	text.undraw(170000);
+	let gbg = new GraphTheory(bg);
+	await gbg.construct({
+		nodes: [
+			{x: 4 - 0.35, y: 0.5, label: "C"},
+			{x: 4 + 0.35, y: 0.5, label: "Y"},
+			{x: 4, y: 0, label: "\\overrightarrow{u}", labelColor: '#e6df2c'}
+		],
+		edges: [[0, 1], [1, 2], [0, 2]]
+	}, false, 0.35);
+	gbg.draw();
 
-	anim.play();
+	bg.play();
 })();

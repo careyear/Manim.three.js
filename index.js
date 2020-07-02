@@ -38,7 +38,7 @@ export const promisifyLoader = ( loader, onProgress ) => {
 
 export class Animation {
 
-    constructor({controls = true, documentId = 'scene-container', autoplay = true}) {
+    constructor({controls = true, documentId = 'scene-container', autoplay = true, autoReplay = autoplay}) {
         this.isPlaying = false;
         this.hasPlayed = [];
         this.animations = []; // Animations are a dictionary = {name, function, terminate_condition, ...letiables}
@@ -49,6 +49,8 @@ export class Animation {
         this.hooks = [];
         this.curIndex = 0;
         this.autoplay = autoplay;
+        this.isControls = controls;
+        this.autoReplay = autoReplay;
 
         /* This way of animating is not provably optimal but works well with small number
         * of animations. We will think of better ways after this crude implementation works
@@ -56,6 +58,8 @@ export class Animation {
         */
 
         this.container = document.getElementById(documentId);
+        if(!this.container)
+            return;
 
         this.scene = new Scene();
         this.scene.background = new Color(0x000000);
@@ -89,7 +93,8 @@ export class Animation {
 
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.container.appendChild(this.renderer.domElement);
-        this.renderer.domElement.addEventListener("click", () => this.isPlaying ? this.pause() : this.play(false));
+        if(this.isControls)
+            this.renderer.domElement.addEventListener("click", () => this.isPlaying ? this.pause() : this.play(false));
     };
     createCamera = () => {
 
@@ -579,6 +584,7 @@ export class Animation {
                 slider.setAttribute('step', trackable.step ? trackable.step : 0.01);
                 slider.style.position = 'relative';
                 slider.style.width = "100%";
+                slider.style.minWidth = "60px";
 
                 let labelSlider = document.createElement('span');
                 // labelSlider.setAttribute('for', trackable.name);
@@ -674,28 +680,30 @@ export class Animation {
             this.sprites[i].lookAt(this.camera.position);
             this.sprites[i].setRotationFromQuaternion(this.camera.quaternion, 0);
         }
+        if(this.isControls)
+            this.timeContainer.innerText = this.sanitizeTime(this.curIndex) + " / " + this.sanitizeTime(this.countCheckpoints());
 
-        this.timeContainer.innerText = this.sanitizeTime(this.curIndex) + " / " + this.sanitizeTime(this.countCheckpoints());
-
+        // console.log(this.isPlaying, this.curIndex, parseInt(this.countCheckpoints()));
         if(this.curIndex === parseInt(this.countCheckpoints())) {
-        	if(this.autoplay) {
-        		this.playButton.setAttribute('class', "fas fa-play");
-        		this.seekbar.value = 0;
+        	if(this.autoReplay) {
+        		if(this.isControls) {
+                    this.playButton.setAttribute('class', "fas fa-play");
+                    this.seekbar.value = 0;
+                }
 				this.seek(0);
 			}
         	else {
 				if (this.isPlaying)
 					for (let i in this.trackables)
 						this.stopTrackable(i);
-				this.playButton.setAttribute('class', "fas fa-redo");
+                if(this.isControls)
+				    this.playButton.setAttribute('class', "fas fa-redo");
 				this.pause();
 			}
             return;
         }
-
         if(!this.isPlaying || this.start >= this.animations.length)
             return;
-
 
         if(this.animations[this.start].name === "hook") {
         	let hook = this.hooks[this.animations[this.start].index];
@@ -717,19 +725,23 @@ export class Animation {
 
         let played = false;
         let fraction = 1;
-        for(let i = this.start; i < this.animations.length; i++)
-        {
-            if(this.animations[i].name === "checkpoint" || this.animations[i].name === "delay")
-                break;
-            if(this.animations[i].name !== "addTrackable" && this.animations[i].name !== "removeTrackable")
-                fraction = Math.min(fraction, this.animations[i].fraction);
+        if(this.isControls) {
+            for (let i = this.start; i < this.animations.length; i++) {
+                if (this.animations[i].name === "checkpoint" || this.animations[i].name === "delay")
+                    break;
+                if (this.animations[i].name !== "addTrackable" && this.animations[i].name !== "removeTrackable")
+                    fraction = Math.min(fraction, this.animations[i].fraction);
+            }
+            this.seekbar.setAttribute('value', (this.curIndex + fraction).toString());
+            this.seekbar.value = this.seekbar.getAttribute('value');
         }
-        this.seekbar.setAttribute('value', (this.curIndex + fraction).toString());
-        this.seekbar.value = this.seekbar.getAttribute('value');
         for (let i = this.start; i < this.animations.length; i++) {
-            if(this.animations[i].name === "checkpoint" && i !== 0 && this.animations[i-1].name !== "checkpoint" && !played) {
-                this.seekbar.setAttribute('value', (++this.curIndex).toString());
-                this.seekbar.value = this.seekbar.getAttribute('value');
+            if (this.animations[i].name === "checkpoint" && i !== 0 && this.animations[i - 1].name !== "checkpoint" && !played) {
+                this.curIndex++;
+                if(this.isControls) {
+                    this.seekbar.setAttribute('value', this.curIndex.toString());
+                    this.seekbar.value = this.seekbar.getAttribute('value');
+                }
             }
 
             let currentAnimation = this.animations[i];
@@ -764,6 +776,7 @@ export class Animation {
                 else this.delay++;
                 return;
             }
+
             if (!this.hasPlayed[i]) {
                 if (currentAnimation.terminateCond()) {
                     this.hasPlayed[i] = true;
@@ -773,8 +786,6 @@ export class Animation {
                 }
             }
         }
-        // if(!played)
-        //     this.stop();
     };
     render = () => {
         this.renderer.render(this.scene, this.camera);
@@ -893,7 +904,8 @@ export class Animation {
             return;
 
         this.isPlaying = false;
-        this.playButton.setAttribute('class', "fas fa-play");
+        if(this.isControls)
+            this.playButton.setAttribute('class', "fas fa-play");
     };
     sanitizeTime = value => {
         let minutes = Math.floor(value / 60);
@@ -906,23 +918,21 @@ export class Animation {
         if (this.isPlaying)
             return;
         if(initial) {
-
-            let fa = document.createElement('script');
-            fa.setAttribute('src', "https://kit.fontawesome.com/0dd3616480.js");
-            fa.setAttribute('crossorigin', "anonymous");
-            document.getElementsByTagName('head')[0].appendChild(fa);
-
-            this.seekbarContainer = document.createElement('div');
             this.animations.push({name: "checkpoint"});
-            let css = `
+            if(this.controls) {
+                let fa = document.createElement('script');
+                fa.setAttribute('src', "https://kit.fontawesome.com/0dd3616480.js");
+                fa.setAttribute('crossorigin', "anonymous");
+                document.getElementsByTagName('head')[0].appendChild(fa);
+
+                this.seekbarContainer = document.createElement('div');
+                let css = `
 .animation-bottom {
-    width: calc(100% - 20px);
     z-index: 10;
-    top: calc(100% - 50px);
     position: relative;
     height: 50px;
     display: inline-block;
-    opacity: 0;
+    opacity: 1;
     padding: 0 10px;
     -webkit-transition: all 0.5s ease-in-out;
     -moz-transition: all 0.5s ease-in-out;
@@ -1148,97 +1158,103 @@ export class Animation {
     cursor: pointer;
 }
             `;
-            let style = document.createElement('style');
-            if(style.styleSheet)
-                style.styleSheet.cssText = css;
-            else
-                style.appendChild(document.createTextNode(css));
-            document.getElementsByTagName('head')[0].appendChild(style);
-            this.seekbarContainer.setAttribute('class', "animation-bottom");
-            this.container.addEventListener('mouseenter', () => this.seekbarContainer.style.opacity = "1");
-            this.container.addEventListener('mouseleave', () => this.seekbarContainer.style.opacity = "0");
-            this.container.style.display = "block";
-            this.seekbar = document.createElement('input');
-            this.seekbar.setAttribute('type', 'range');
-            this.seekbar.setAttribute('min', '0');
-            this.seekbar.setAttribute('max', this.countCheckpoints());
-            this.seekbar.setAttribute('value', '0');
-            this.seekbar.setAttribute('step', '0.01');
-            this.seekbar.setAttribute('class', 'seekbar');
-            this.seekbarContainer.appendChild(this.seekbar);
-            this.container.appendChild(this.seekbarContainer);
-            this.seekbar.addEventListener("input", e => {this.seek(parseFloat(e.target.value)); this.seekbar.setAttribute('value', e.target.value); this.seekbar.value = e.target.value});
+                let style = document.createElement('style');
+                if (style.styleSheet)
+                    style.styleSheet.cssText = css;
+                else
+                    style.appendChild(document.createTextNode(css));
+                document.getElementsByTagName('head')[0].appendChild(style);
+                this.seekbarContainer.setAttribute('class', "animation-bottom");
+                this.container.addEventListener('mouseenter', () => this.seekbarContainer.style.opacity = "1");
+                this.container.addEventListener('mouseleave', () => this.seekbarContainer.style.opacity = "0");
+                this.container.style.display = "block";
+                this.seekbar = document.createElement('input');
+                this.seekbar.setAttribute('type', 'range');
+                this.seekbar.setAttribute('min', '0');
+                this.seekbar.setAttribute('max', this.countCheckpoints());
+                this.seekbar.setAttribute('value', '0');
+                this.seekbar.setAttribute('step', '0.01');
+                this.seekbar.setAttribute('class', 'seekbar');
+                this.seekbarContainer.appendChild(this.seekbar);
+                this.container.appendChild(this.seekbarContainer);
+                this.seekbar.addEventListener("input", e => {
+                    this.seek(parseFloat(e.target.value));
+                    this.seekbar.setAttribute('value', e.target.value);
+                    this.seekbar.value = e.target.value
+                });
 
-            this.playButton = document.createElement('i');
-            this.playButton.setAttribute('class', 'fas fa-play');
-            this.playButton.style.position = "relative";
-            this.playButton.style.color = "white";
-            this.playButton.style.margin = "0 10px";
-            this.playButton.style.cursor = "pointer";
-            this.playButton.addEventListener("click", () => {
-                if(this.isPlaying)
-                    this.pause();
-                else this.play(false);
-            });
-            this.seekbarContainer.appendChild(this.playButton);
+                this.playButton = document.createElement('i');
+                this.playButton.setAttribute('class', 'fas fa-play');
+                this.playButton.style.position = "relative";
+                this.playButton.style.color = "white";
+                this.playButton.style.margin = "0 10px";
+                this.playButton.style.cursor = "pointer";
+                this.playButton.addEventListener("click", () => {
+                    if (this.isPlaying)
+                        this.pause();
+                    else this.play(false);
+                });
+                this.seekbarContainer.appendChild(this.playButton);
 
-            this.timeContainer = document.createElement('span');
-            this.timeContainer.innerText = "00:00 / " + this.sanitizeTime(this.countCheckpoints() - 1);
-            this.timeContainer.style.position = "relative";
-            this.timeContainer.style.color = "white";
-            this.timeContainer.style.lineHeight = "25px";
-            this.timeContainer.style.height = "30px";
-            this.timeContainer.style.display = "inline-block";
-            this.timeContainer.style.margin = "0 10px";
-            this.seekbarContainer.appendChild(this.timeContainer);
+                this.timeContainer = document.createElement('span');
+                this.timeContainer.innerText = "00:00 / " + this.sanitizeTime(this.countCheckpoints());
+                this.timeContainer.style.position = "relative";
+                this.timeContainer.style.color = "white";
+                this.timeContainer.style.lineHeight = "25px";
+                this.timeContainer.style.height = "30px";
+                this.timeContainer.style.display = "inline-block";
+                this.timeContainer.style.margin = "0 10px";
+                this.seekbarContainer.appendChild(this.timeContainer);
 
-            let fullscreen = document.createElement('i');
-            fullscreen.setAttribute('class', "fas fa-expand");
-            fullscreen.style.position = "relative";
-            fullscreen.style.color = "white";
-            fullscreen.style.margin = "0 10px";
-            fullscreen.style.cursor = "pointer";
-            fullscreen.style.cssFloat = "right";
-            fullscreen.style.height = "25px";
-            fullscreen.style.lineHeight = "25px";
-            this.fullscreen = false;
-            fullscreen.addEventListener("click", () => {
-                if(this.fullscreen) {
-                    if (document.exitFullscreen)
-                        document.exitFullscreen();
-                    else if (document.webkitExitFullscreen)
-                        document.webkitExitFullscreen();
-                    else if (document.mozCancelFullScreen)
-                        document.mozCancelFullScreen();
-                    else if (document.msExitFullscreen)
-                        document.msExitFullscreen();
-                    else
-                        alert("Exit fullscreen doesn't work");
-                    this.fullscreen = false;
-                    fullscreen.setAttribute('class', "fas fa-expand");
-                } else {
-                    if (this.container.RequestFullScreen)
-                        this.container.RequestFullScreen();
-                    else if (this.container.webkitRequestFullScreen)
-                        this.container.webkitRequestFullScreen();
-                    else if (this.container.mozRequestFullScreen)
-                        this.container.mozRequestFullScreen();
-                    else if (this.container.msRequestFullscreen)
-                        this.container.msRequestFullscreen();
-                    else
-                        alert("This browser doesn't supporter fullscreen");
-                    this.fullscreen = true;
-                    fullscreen.setAttribute('class', "fas fa-compress");
-                }
-            });
-            this.seekbarContainer.appendChild(fullscreen);
+                let fullscreen = document.createElement('i');
+                fullscreen.setAttribute('class', "fas fa-expand");
+                fullscreen.style.position = "relative";
+                fullscreen.style.color = "white";
+                fullscreen.style.margin = "0 10px";
+                fullscreen.style.cursor = "pointer";
+                fullscreen.style.cssFloat = "right";
+                fullscreen.style.height = "25px";
+                fullscreen.style.lineHeight = "25px";
+                this.fullscreen = false;
+                fullscreen.addEventListener("click", () => {
+                    if (this.fullscreen) {
+                        if (document.exitFullscreen)
+                            document.exitFullscreen();
+                        else if (document.webkitExitFullscreen)
+                            document.webkitExitFullscreen();
+                        else if (document.mozCancelFullScreen)
+                            document.mozCancelFullScreen();
+                        else if (document.msExitFullscreen)
+                            document.msExitFullscreen();
+                        else
+                            alert("Exit fullscreen doesn't work");
+                        this.fullscreen = false;
+                        fullscreen.setAttribute('class', "fas fa-expand");
+                    } else {
+                        if (this.container.RequestFullScreen)
+                            this.container.RequestFullScreen();
+                        else if (this.container.webkitRequestFullScreen)
+                            this.container.webkitRequestFullScreen();
+                        else if (this.container.mozRequestFullScreen)
+                            this.container.mozRequestFullScreen();
+                        else if (this.container.msRequestFullscreen)
+                            this.container.msRequestFullscreen();
+                        else
+                            alert("This browser doesn't supporter fullscreen");
+                        this.fullscreen = true;
+                        fullscreen.setAttribute('class', "fas fa-compress");
+                    }
+                });
+                this.seekbarContainer.appendChild(fullscreen);
 
-            this.controller = document.createElement('div');
-            this.controller.setAttribute('class', 'scene-controller');
-            this.container.appendChild(this.controller);
+                this.controller = document.createElement('div');
+                this.controller.setAttribute('class', 'scene-controller');
+                this.container.appendChild(this.controller);
+            }
 
             if(this.autoplay) {
-				this.playButton.setAttribute('class', "fas fa-pause");
+                if(this.isControls)
+				    this.playButton.setAttribute('class', "fas fa-pause");
 				this.isPlaying = true;
 			}
 
