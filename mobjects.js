@@ -10,10 +10,8 @@ import {
     Shape,
     ShapeGeometry,
     Vector3,
-    Group,
-	Geometry,
-	LineBasicMaterial
-} from './node_modules/three/src/Three.js';
+    Group
+} from './node_modules/three/build/three.module.js';
 import {SVGLoader} from "./SVGLoader.js";
 import {Mathjax, promisifyLoader} from "./index.js";
 

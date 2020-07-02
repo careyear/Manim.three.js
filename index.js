@@ -1,6 +1,4 @@
 import {
-    ArrowHelper,
-    BoxBufferGeometry,
     BufferAttribute,
     BufferGeometry,
     Color,
@@ -17,14 +15,12 @@ import {
     MeshStandardMaterial,
     PerspectiveCamera,
     Scene,
-    Shape,
     ShapeGeometry,
-    SphereGeometry,
     sRGBEncoding,
     TextureLoader,
     Vector3,
     WebGLRenderer
-} from './node_modules/three/src/Three.js';
+} from './node_modules/three/build/three.module.js';
 import {OrbitControls} from './node_modules/three/examples/jsm/controls/OrbitControls.js';
 import {SVGLoader} from "./SVGLoader.js";
 
