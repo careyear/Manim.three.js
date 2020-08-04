@@ -51,6 +51,7 @@ export class Animation {
         this.autoplay = autoplay;
         this.isControls = controls;
         this.autoReplay = autoReplay;
+        this.download = false;
 
         /* This way of animating is not provably optimal but works well with small number
         * of animations. We will think of better ways after this crude implementation works
@@ -74,13 +75,13 @@ export class Animation {
         window.addEventListener('resize', () => {
             // set the aspect ratio to match the new browser window aspect ratio
             this.camera.aspect = this.container.clientWidth / this.container.clientHeight;
-        
+
             // update the camera's frustum
             this.camera.updateProjectionMatrix();
-        
+
             // update the size of the renderer AND the canvas
             this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
-        
+
         });
 
         this.renderer.setAnimationLoop(null);
@@ -89,7 +90,7 @@ export class Animation {
     createRenderer = () => {
         this.renderer = new WebGLRenderer({antialias: true});
 
-				this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
+        this.renderer.setSize(this.container.clientWidth, this.container.clientHeight);
 
         this.renderer.setPixelRatio(window.devicePixelRatio);
         this.container.appendChild(this.renderer.domElement);
@@ -548,7 +549,22 @@ export class Animation {
     };
 
     addAnimation = (animation) => {
-        this.animations.push(animation);
+        let tanim = {
+            name: "normal",
+            set: animation,
+            fraction: 0
+        };
+        this.animations.push(tanim);
+        this.hasPlayed.push(false);
+    };
+
+    checkpoint = () => {
+        this.animations.push({name: "checkpoint"});
+        this.hasPlayed.push(false);
+    };
+
+    delay = () => {
+        this.animations.push({name: "delay"});
         this.hasPlayed.push(false);
     };
 
@@ -573,7 +589,7 @@ export class Animation {
         let trackable = this.trackables[name];
         trackable.value = trackable.defaultValue ? parseInt(trackable.defaultValue) : 0;
         switch(trackable.type) {
-			case "slider":
+            case "slider":
                 let spanSlider = document.createElement('span');
                 let slider = document.createElement('input');
                 slider.setAttribute('name', trackable.name);
@@ -685,6 +701,12 @@ export class Animation {
 
         // console.log(this.isPlaying, this.curIndex, parseInt(this.countCheckpoints()));
         if(this.curIndex === parseInt(this.countCheckpoints())) {
+            if(!this.download && this.capturer) {
+                this.capturer.save();
+                this.capturer.stop();
+                this.download = true;
+                return;
+            }
         	if(this.autoReplay) {
         		if(this.isControls) {
                     this.playButton.setAttribute('class', "fas fa-play");
@@ -776,13 +798,13 @@ export class Animation {
                 else this.delay++;
                 return;
             }
-
             if (!this.hasPlayed[i]) {
-                if (currentAnimation.terminateCond()) {
+                if (currentAnimation.fraction >= 1) {
                     this.hasPlayed[i] = true;
                 } else {
                     played = true;
-                    currentAnimation.animate();
+                    currentAnimation.fraction += 1 / 59.0;
+                    currentAnimation.set(currentAnimation.fraction);
                 }
             }
         }
@@ -817,10 +839,12 @@ export class Animation {
                 ) {}
                 else if(frac) {
                     this.animations[i].set(value);
+                    this.animations[i].fraction = value;
                     this.hasPlayed[i] = false;
                 }
                 else {
                     this.animations[i].set(0);
+                    this.animations[i].fraction = 0;
                     this.hasPlayed[i] = false;
                 }
             }
@@ -848,6 +872,7 @@ export class Animation {
             if(this.isPlaying)
                 this.play();
             else {this.update();this.render();this.pause();}
+            console.log("END");
             return;
         }
         for(let i = 0, cur = 0;i < this.animations.length; i++) {
