@@ -10,7 +10,7 @@
   "license": "ISC",
   "dependencies": {
     "ccapture.js": "^1.1.0",
-    "three": "^0.111.0",
+    "three": "^0.125.0",
     "three-bmfont-text": "^2.3.0"
   }
 }
